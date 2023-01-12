@@ -1,0 +1,267 @@
+---
+title: "BT1101-Tutorial 5 (Deadline: 4 Oct 8am)"
+author: "Lo Zhi Hao"
+date: "10/1/2021"
+output: html_document
+---
+## Tutorial 5 Question 2 (To be Submitted; 25 marks)
+
+- Dataset required: `marketing_campaign.xlsx`
+
+This data set contains data on 2240 customers involved in a marketing campaign of a company with both physical and online presence. Each of the column is defined as follows: 
+
+- `ID` : customer unique identifier
+- `Year_Birth` :  customer year of birth
+- `Education` : customer’s level of education
+- `Marital_Status`:  customer’s marital status
+- `Income` : customer’s yearly household income
+- `Kidhome` :  number of small children in customer’s household
+- `Teenhome` : number of teenagers in customer’s household
+- `Dt_Customer`: date of customer’s enrollment with the company
+- `Recency` : number of days since the last purchase
+- `MntWines` : amount spent on wine products in the last 2 years
+- `MntFruits` : amount spent on fruits products in the last 2 years
+- `MntMeatProducts` : amount spent on meat products in the last 2 years
+- `MntFishProducts` : amount spent on fish products in the last 2 years
+- `MntSweetProducts` : amount spent on sweet products in the last 2 years
+- `MntGoldProds` : amount spent on gold products in the last 2 years
+- `NumDealsPurchases` : number of purchases made with discount
+- `NumWebPurchases` : number of purchases made through company’s web site
+- `NumCatalogPurchases` : number of purchases made using catalogue
+- `NumStorePurchases` : number of purchases made directly in stores
+- `NumWebVisitsMonth` : number of visits to company’s web site in the last month
+- `AcceptedCmp3` : 1 if customer accepted the offer in the 3rd campaign, 0 otherwise
+- `AcceptedCmp4` : 1 if customer accepted the offer in the 4th campaign, 0 otherwise
+- `AcceptedCmp5` : 1 if customer accepted the offer in the 5th campaign, 0 otherwise
+- `AcceptedCmp1` : 1 if customer accepted the offer in the 1st campaign, 0 otherwise
+- `AcceptedCmp2` : 1 if customer accepted the offer in the 2nd campaign, 0 otherwise
+- `Response`` : 1 if customer accepted the offer in the last campaign, 0 otherwise
+- `Complain` : 1 if customer complained in the last 2 years
+
+```{r q2-read-dataset, echo=TRUE, message=FALSE, warning=FALSE}
+#put in your working directory folder pathname 
+# C:/Users/User/Desktop/BT 1101
+
+#import excel file into RStudio
+library("readxl")
+Df <- read_excel("marketing_campaign.xlsx")
+
+#summary(Df)
+
+library("rcompanion") #this package is required for transformTukey function
+library("rstatix")
+library("Rmisc") 
+library("dplyr") #need to call the libary before you use the package
+library("tidyr")
+library("rpivotTable")
+library("knitr")
+library("psych")
+
+```
+<p>
+**In the last two tutorials, you have helped to build the dashboards to help the marketing manager understand the customers and the marketing campaign better. This tutorial you will help to develop estimates of the population and to conduct hypothesis testings. As with T4, you are required to identify and decide what to do with outlier or erroneous data. Please explain your decision in your answer. We will not perform data imputation for this tutorial.**
+</p>
+
+<p style="color:red">**One mark will be awarded for submission of HTML file that is knitted from the RMD file.** </p>
+
+### Q2.(a) Computing Interval Estimates
+Using the data from the marketing campaign:
+
+- i. Develop 95% confidence interval to estimate the mean customer age of the company. Based on this result, explain to the marketing manager if the company can reasonably conclude that its customers' average age is 50? (Take 2021 as the reference year when computing the `Age` variable) (2 marks)
+- ii. Develop 95% confidence interval to estimate the true proportion of customers who complain in the company. From this interval estimate, explain to the marketing manager if the company should be concerned if it has set a target for proportion of customers that complain not to exceed 1%? (2 marks)
+- iii. Develop 90% prediction interval for the total amount spent by each customer (i.e. sum of amount spent for wine, fruits, meat, fish, sweet and gold products). Explain what this interval means to the marketing manager. (3 marks)
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+```{r q2a, echo=TRUE}
+
+# a(i)
+Df_age <- Df %>% mutate(Age = 2021 - Year_Birth)
+
+boxplot(Df_age$Age,
+        main="Age Distribution of customers")
+Df_age <- Df_age %>% filter(Age < 118)
+# I removed age outliers that are above 118, as the current world record age is 118, and its quite impossible to have customers of that age. Hence, I would suggest that there might be some human error when collecting the data and the data should be removed. 
+
+mean_age <- mean(Df_age$Age)
+sd_age <- sd(Df_age$Age)
+se_age <- sd_age / sqrt(nrow(Df_age))
+
+a <- qt(0.975, nrow(Df_age)-1)
+
+UCI_age <- mean_age + a*se_age
+LCI_age <- mean_age - a*se_age
+
+print(cbind(LCI_age, UCI_age), digits=4)
+
+# a(ii)
+Df_cmp <- Df %>% group_by(Complain) %>% count()
+Df_got_cmp <- Df %>% filter(Complain == 1)
+
+p_cmp <- nrow(Df_got_cmp) / nrow(Df)
+sqrt_p <- sqrt((p_cmp*(1-p_cmp))/nrow(Df))
+nml <- qnorm(0.975)
+
+UCI_cmp <- p_cmp + nml*sqrt_p
+LCI_cmp <- p_cmp - nml*sqrt_p
+
+print(cbind(LCI_cmp*100, UCI_cmp*100), digits=4)
+
+# a(iii)
+Df_tot <- Df %>% mutate(Tot = MntWines + MntFruits + MntMeatProducts + MntFishProducts + MntSweetProducts + MntGoldProds) 
+
+boxplot(Df_tot$Tot, 
+        main="Total Amount Spent by Each Customer")
+# I am not removing the outlier in this data as the outlier does not suggest anything that is too abnormal or absurd. For example, the customer may be a loyal customer of the company, and likes the products of the company a lot. 
+
+# Testing for the normality of the data 
+
+shapiro.test(Df_tot$Tot)
+
+plot(density(Df_tot$Tot),
+     main = "Density Plot for Total Amount Spent")
+# The plot is right skewed
+
+qqnorm(Df_tot$Tot)
+qqline(Df_tot$Tot)
+
+
+t <- qt(0.95, nrow(Df_tot)-1)
+sd_tot <- sd(Df_tot$Tot)
+mean_tot <- mean(Df_tot$Tot)
+
+UPI_Tot <- mean_tot + sd_tot*t*sqrt(1 + 1/nrow(Df_tot))
+LPI_Tot <- mean_tot - sd_tot*t*sqrt(1 + 1/nrow(Df_tot))
+
+print(cbind(LPI_Tot, UPI_Tot), digits=4)
+
+```
+
+<p style="color:blue">
+**a(i)**
+The 95% confidence interval for customer age is [51.7, 52.69]. 
+Hence, its not reasonable to conclude that the average customer age is 50, as it is not within the 95% confidence interval for the mean customer age. 
+
+<p>
+
+**a(ii)**
+The 95% confidence interval for proportions of customers who complain is [1.337%, 0.5384%]. Hence, the marketing manager should be concerned as the 1% target is within the range of the 95% confidence interval. 
+
+<p>
+
+**a(iii)**
+The 90% prediction interval for the total amount spent by each customer is [-385.4, 1597]. As the amount spent by customers will be not less than 0, this suggests that there's a 90% chance that customers will spent between 0 and 1597 on the company's product in the future 2 years. 
+
+</p>
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+### Q2.(b) Hypothesis Testing
+
+- i. In T4, you created a chart for the customer dashboard to compare the mean household income by customer marital status. Could you conduct a hypothesis test to determine if significant differences exist in the mean household income among customers of different marital status? (4 marks)
+- ii. In T4, you also created a chart for the customer purchase dashboard to compare the mean spending on different products. Could you conduct a hypothesis test to determine if the average amount spent on wine is more than that for meat? Could you also conduct a hypothesis test to determine if the average amount spent by customers is different between fruits and sweet products? (6 marks) 
+- iii. The company believes that the average total amount spent per customer is greater than $580. Could you conduct a hypothesis test to determine if this statement could be accepted? (3 marks)
+- iv. The company proposes that the mean number of web purchases would be different for customers who have children and/or teenagers in the house compared to those who do not. Could you conduct a hypothesis test to determine if this statement could be accepted?  (4 marks)
+
+For each of the above, type out your hypotheses (H0, H1) clearly in your answer below and type your conclusion based on the results. 
+
+
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+```{r q2b, echo=TRUE}
+
+# b(i)
+
+Df_mean <- Df %>% filter(Marital_Status != "Absurd") %>% filter(Marital_Status != "YOLO") %>% filter(Marital_Status != "Alone") %>% filter(is.na(Income)==FALSE) %>% select(Marital_Status, Income)
+# I removed "Absurd" and "Yolo", as they have small sample sizes, and the marital status are not valid marital statuses. 
+
+# testing if sample size is equally distributed
+table(Df_mean$Marital_Status)
+
+# testing for equal variances 
+fligner.test(Df_mean$Income ~ Df_mean$Marital_Status)
+
+# cannot meet all assumption for anova test, so I will be using Games-Howell test to test the null hypothesis
+inc <- Df_mean %>% games_howell_test(Income ~ Marital_Status)
+inc
+
+# b(ii)
+
+# using Welch two sample t test to test for mean difference
+t.test(Df$MntWines, Df$MntMeatProducts, alternative = "greater")
+
+t.test(Df$MntFruits, Df$MntSweetProducts)
+
+# b(iii)
+
+Df_tot <- Df %>% mutate(Tot = MntWines + MntFruits + MntMeatProducts + MntFishProducts + MntSweetProducts + MntGoldProds) 
+
+# Using t-test function on the question
+
+t.test(Df_tot$Tot, 
+       alternative = "greater",
+       mu = 580,
+       conf.level = 0.95)
+
+# using formula method 
+
+mean_tot <- mean(Df_tot$Tot)
+sd_tot <- sd(Df_tot$Tot)
+
+ti <- (mean_tot - 580) / (sd_tot/sqrt(nrow(Df_tot)))
+qt(0.95, nrow(Df_tot)-1)
+ti > qt(0.95, nrow(Df_tot)-1)
+
+# Proven that its t is larger than then critical value, so we can reject H0 and accept that the average amount is greater than $580. 
+
+# b(iv)
+
+Df_new <- Df %>% mutate(Child = Kidhome + Teenhome)
+Df_child <- Df_new %>% filter(Child > 0)
+Df_nochild <- Df_new %>% filter(Child == 0)
+
+# Using Welch two sample t-test to test for mean difference
+
+t.test(Df_child$NumWebPurchases, Df_nochild$NumWebPurchases)
+
+
+```
+
+<p style="color:blue">
+
+**b(i)**
+*H0 <- The household income of different marital status is not significantly different from each other. *
+*H1 <- There is a significant difference in household income between different marital status*
+<p>
+As all the p-value in the games howell test is larger than 0.05, it is therefore not sufficient to reject the H0 hypothesis that household income is not significantly different from each other. Hence, we can conclude that the household income of different marital status is not significantly different from each other. 
+
+<p style="color:blue">
+**b(ii)**
+*H0 <- The average amount spent on wine is less than or equal to the average amount spent on meat*
+*H1 <- The average amount spent on wine is more than the average amount spent on meat* 
+<p>
+As t = 15.998 and p-value < 0.05, our sample data have sufficient evidence to reject H0 which is the average amount spent on wine is less than or equal to the average amount spent on meat. Hence, we can conclude that the average amount spent on wine is more than the average amount spent on meat at the 5% level of significance. 
+
+<p style="color:blue">
+*H0 <- The average amount spent by customers is equal between fruits and sweet products*
+*H1 <- The average amount spent by customers is different between fruits and sweet products* 
+<p>
+As t = -0.6287 and p-value > 0.05, our sample data have no sufficient evidence to reject H0. Hence, we can accept that the average amount spent by customers is not different between fruits and sweet products at the 5% level of significance.
+
+<p style="color:blue">
+**b(iii)**
+*H0 <- The average total amount spent per customer is less than or equal than $580*
+*H1 <- The average total amount spent per customer is more than $580*
+<p>
+Based on t = 2.0274 and p-value < 0.05, our sample data has sufficient evidence to reject H0. Hence, we can accept that the average total amount spent per customer is more than $580 at the 5% level of significance. 
+
+<p style="color:blue">
+**b(iv)**
+*H0 <- The mean number of web purchases of customers with children and/or teenagers in the house is equal to those who do not have children in the house.* 
+*H1 <- The mean number of web purchases of customers with children and/or teenagers in the house is different to those who do not have children in the house.*
+<p>
+Based on t = -3.5419 and p-value < 0.05, our sample data has sufficient evidence to reject H0. Hence, we can accept that the mean number of web purchases of customers with children and/or teenagers in the house is different to those who do not have children in the house at the 5% level of significance. 
+
+
+</p>
+<p style="color:red">**END: YOUR ANSWER**</p>
+

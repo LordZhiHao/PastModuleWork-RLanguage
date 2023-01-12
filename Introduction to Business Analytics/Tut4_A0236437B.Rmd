@@ -1,0 +1,230 @@
+---
+title: "BT1101-Tutorial 4 (Deadline: 27 Sept 8am)"
+author: "Lo Zhi Hao"
+date: "9/26/2021"
+output: html_document
+---
+
+### Tutorial 4 Question 2 (To be Submitted; 25 marks)
+
+- Dataset required: `marketing_campaign.xlsx`
+
+This data set contains data on 2240 customers involved in a marketing campaign of a company with both physical and online presence. Each of the column is defined as follows: 
+
+- `ID` : customer unique identifier
+- `Year_Birth` :  customer year of birth
+- `Education` : customer’s level of education
+- `Marital_Status`:  customer’s marital status
+- `Income` : customer’s yearly household income
+- `Kidhome` :  number of small children in customer’s household
+- `Teenhome` : number of teenagers in customer’s household
+- `Dt_Customer`: date of customer’s enrollment with the company
+- `Recency` : number of days since the last purchase
+- `MntWines` : amount spent on wine products in the last 2 years
+- `MntFruits` : amount spent on fruits products in the last 2 years
+- `MntMeatProducts` : amount spent on meat products in the last 2 years
+- `MntFishProducts` : amount spent on fish products in the last 2 years
+- `MntSweetProducts` : amount spent on sweet products in the last 2 years
+- `MntGoldProds` : amount spent on gold products in the last 2 years
+- `NumDealsPurchases` : number of purchases made with discount
+- `NumWebPurchases` : number of purchases made through company’s web site
+- `NumCatalogPurchases` : number of purchases made using catalogue
+- `NumStorePurchases` : number of purchases made directly in stores
+- `NumWebVisitsMonth` : number of visits to company’s web site in the last month
+- `AcceptedCmp3` : 1 if customer accepted the offer in the 3rd campaign, 0 otherwise
+- `AcceptedCmp4` : 1 if customer accepted the offer in the 4th campaign, 0 otherwise
+- `AcceptedCmp5` : 1 if customer accepted the offer in the 5th campaign, 0 otherwise
+- `AcceptedCmp1` : 1 if customer accepted the offer in the 1st campaign, 0 otherwise
+- `AcceptedCmp2` : 1 if customer accepted the offer in the 2nd campaign, 0 otherwise
+- `Response`` : 1 if customer accepted the offer in the last campaign, 0 otherwise
+- `Complain` : 1 if customer complained in the last 2 years
+
+```{r q2-read-dataset, echo=TRUE}
+#put in your working directory folder pathname 
+
+#import excel file into RStudio
+library(readxl)
+Df <- read_excel("marketing_campaign.xlsx")
+#To identify rows with missing data, we can use the function complete.cases() to check rows with missing data, or summary() for columns with NAs
+#summary(Df)
+```
+<p>
+**You will continue to build on the dashboards from Tutorial 3 to help the marketing manager understand the customers and the marketing campaign better. Now that you have learnt how to conduct outlier analyses, you are expected to perform the necessary checks and decide whether to remove the outliers before analysing the data and building the dashboards. If any data is removed, please explain your decision for their removal. (We will not perform data imputation for this tutorial.)**
+</p>
+
+### Q2.(a) Customer Dashboard 
+- i. The marketing manager would like to include some descriptive statistics in the Customer dashboard. Generate a table to display the mean, standard deviation, minimum, maximum, range, median, skewness and kurtosis for customer age and household income. (4 marks)
+- ii. Generate the necessary plots and conduct the appropriate test to assess if `Age` and `Income` are normally distributed. Write your interpretation in the space below. (3 marks)
+- iii. He would like to compare the mean household income by customer marital status on a chart. (3 marks)
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+```{r q2a, echo=TRUE}
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(rpivotTable)
+library(psych)
+
+#ai
+Df_age <- Df %>% mutate(Age=2021-Year_Birth) 
+Df_income <- Df %>% select(Income)
+Df_des_age <- describe(Df_age$Age) %>% select(mean, sd, min, max, range, median, skew, kurtosis)
+Df_des_income <- describe(Df$Income) %>% select(mean, sd, min, max, range, median, skew, kurtosis)
+Df_des <- rbind(Df_des_age, Df_des_income)
+rownames(Df_des) <- c("Age", "Income")
+kable(Df_des, caption="Descriptive Statistics of Customer Age and Income")
+
+#aii 
+hist(Df_age$Age, main="Histogram of Customer Age", col="orange", xlab="Age", breaks=20, xlim=c(0, 120), ylim=c(0, 420), labels=TRUE )
+shapiro.test(Df_age$Age)
+
+hist(Df$Income, main="Histogram of Customer Income", col="orange", xlab="Income", breaks=50, xlim=c(5000, 120000), ylim=c(0, 400), labels=TRUE )
+shapiro.test(Df$Income)
+
+#aiii
+Df_meanInc_ms <- Df %>% filter(is.na(Income)==FALSE) %>% group_by(Marital_Status) %>% summarize(mean(Income))
+colors <- c("red","orange","yellow", "green","aquamarine", "blue", "pink", "white")
+barplot(Df_meanInc_ms$`mean(Income)`, col=colors, main="Mean Household Income by Customer Marital Status", ylim=c(0, 100000), ylab="Mean Household Income", xlab="Marital Status",names.arg=Df_meanInc_ms$Marital_Status, cex.names=0.6,cex.axis=0.6, las=2)
+legend("topright", Df_meanInc_ms$Marital_Status, fill=colors, cex=0.5)
+
+```
+
+<p style="color:blue">
+(aii)
+For customer age, the histogram resembles a normal distribution, with some outliers above 120 years old. For the Shapiro-Wilk test, it generates a result of more 0.977 for w, which is close to 1 and suggests it is very similar to a normal distribution.However,it also generates a p value of less than 0.05, and it might be because of the rigorous calculations that was performed by the Shapiro-Wilk test. On overall, customer age resembles a normal distribution 
+
+For customer income, the histogram resembles a normal distribution, with some outliers over $120000. However, for the Shapiro-Wilk test, it generates a result of more 0.7705 for w, which is somewhat close to 1 and suggests it is not that similar to a normal distribution.It also generates a p value of less than 0.05. On overall, customer income does not resembles a normal distribution. 
+</p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+### Q2.(b) Customer Purchase Dashboard 1
+Here are a few requirements the marketing manager has on this dashboard: 
+
+- i. To be able to view the summary statistics (mean, sd, min, max, coefficient of variation) for the amount spent on each of the items (wines, fruit, meat, fish, sweet and gold) in last two years in a table. (3 marks)
+- ii. To have a chart to compare the mean amount spent across the different items (wines, fruit, meat, fish, sweet and gold). Type your interpretation below. (2 marks)
+- iii. To have a chart to compare the coefficients of variation for amount spent across each of the items (wines, fruit, meat, fish, sweet and gold). Type your interpretation below. (2 marks)
+
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+```{r q2b, echo=TRUE}
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(rpivotTable)
+library(psych)
+
+#bi
+Df_wines <- describe(Df$MntWines) %>% mutate(CV=mean/sd) %>% select(mean, sd, min, max, CV)
+Df_fruit <- describe(Df$MntFruits) %>% mutate(CV=mean/sd) %>% select(mean, sd, min, max, CV)
+Df_meat <- describe(Df$MntMeatProducts) %>% mutate(CV=mean/sd) %>% select(mean, sd, min, max, CV)
+Df_fish <- describe(Df$MntFishProducts) %>% mutate(CV=mean/sd) %>% select(mean, sd, min, max, CV)
+Df_sweet <- describe(Df$MntSweetProducts) %>% mutate(CV=mean/sd) %>% select(mean, sd, min, max, CV)
+Df_gold <- describe(Df$MntGoldProds) %>% mutate(CV=mean/sd) %>% select(mean, sd, min, max, CV)
+
+Df_tot <- rbind(Df_wines, Df_fruit, Df_meat, Df_fish, Df_sweet, Df_gold)
+rownames(Df_tot) <- c("Amount Spent on Wines", "Amount Spent on Fruits", "Amount Spent on Meat", "Amount Spent on Fish", "Amount Spent on Sweets", "Amount Spent on Gold")
+colnames(Df_tot) <- c("Mean", "Standard Deviation", "Minimum", "Maximum", "Coefficient of Variation")
+kable(Df_tot, caption="Summary Statistics for Amount Spent on Each Items")
+
+#bii
+colors <- c("red","orange","yellow", "green","aquamarine", "blue", "pink", "white")
+barplot(Df_tot$Mean, main="Mean Amount Spent Across Different Items", col=colors, ylim=c(0, 350), xlab="Items", names.arg=c("Wines", "Fruits", "Meat", "Fish", "Sweets", "Gold"), las=2)
+legend("topright", legend=c("Wines", "Fruits", "Meat", "Fish", "Sweets", "Gold"), fill=colors, cex=0.8)
+
+#biii
+barplot(Df_tot$`Coefficient of Variation`, main="Coefficient of Variation for Amount Spent Across Different Items", col=colors, ylim=c(0, 1.5), xlab="Items", names.arg=c("Wines", "Fruits", "Meat", "Fish", "Sweets", "Gold"), las=2)
+legend("topright", legend=c("Wines", "Fruits", "Meat", "Fish", "Sweets", "Gold"), fill=colors, cex=0.8)
+
+```
+<p style="color:blue">
+(bii)
+By referring to the barplot created, we can notice that the mean amount spent on wines is the highest among all items. At the same time, the mean amount spent on fruits is the lowest among all items. 
+
+(biii)
+By referring to the barplot and the table, the coefficient of amount spent on wines is the highest among all items. At the same time, the coefficient of amount spent on fruits is the lowest among all items
+</p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+### Q2.(c) Customer Purchase Dashboard 2
+The marketing manager would like the following in the dashboard: 
+
+- i. To have a table and chart to compare the mean and median total amount spent (ie. the sum of each customer's spending across all 6 products) by customer marital status (4 marks)
+- ii. To plot the appropriate chart and compute the appropriate statistical measure to determine the linear association between customer annual household income and their spending. Type your interpretation of the chart and statistical measure in the space below.  (2 marks)
+- iii. Based on the data, what percentage of customers spent most on wine in the past 2 years? Among those who spent most on wine, what percentage are "widowed"? (2 marks)
+
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+```{r q2c, echo=TRUE}
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(rpivotTable)
+library(psych)
+
+#ci
+Df_tot_spent <- Df %>% mutate(Total=MntWines+MntFruits+MntMeatProducts+MntFishProducts+MntSweetProducts+MntGoldProds)
+Df_tot <- describeBy(Df_tot_spent$Total, group=Df_tot_spent$Marital_Status, mat=TRUE)
+Df_tot <- Df_tot %>% select(group1, mean, median)
+rownames(Df_tot) <- c(1, 2, 3, 4, 5, 6, 7, 8)
+kable(Df_tot, caption="Mean and Median Amount Spent by Customer Marital Status")
+
+colors <- c("red","orange","yellow", "green","aquamarine", "blue", "pink", "white")
+#barplot(Df_tot$mean, main="Mean Amount Spent by Different Customer Marital Status", col=colors, ylim=c(0, 1200), xlab="Marital Status", cex.axis = 0.7, names.arg=Df_tot$group1, las=2, cex.names=0.7)
+#legend("topright", legend=Df_tot$group1, fill=colors, cex=0.7)
+
+#barplot(Df_tot$median, main="Median Amount Spent by Different Customer Marital Status", col=colors, ylim=c(0, 1200), xlab="Marital Status", cex.axis = 0.7, names.arg=Df_tot$group1, las=2, cex.names=0.7)
+#legend("topright", legend=Df_tot$group1, fill=colors, cex=0.7)
+
+table_new <- as.matrix(Df_tot[, c(2, 3)])
+#table_new
+barplot(table_new, main="Mean and Median Amount Spent by Different Customer Marital Status", beside = TRUE, col=colors, ylim=c(0, 1200), xlab="Marital Status", names.arg=c("Mean", "Median"), las=2, cex.axis=0.7)
+legend("topright", legend=Df_tot$group1, fill=colors, cex=0.5)
+
+matrix_mean <- as.matrix(Df_tot$mean)
+matrix_median <- as.matrix(Df_tot$median)
+columns_mean <- cbind(matrix_mean[1,], matrix_mean[2,],matrix_mean[3,], matrix_mean[4,], matrix_mean[5,], matrix_mean[6,], matrix_mean[7,], matrix_mean[8,])
+columns_median <- cbind(matrix_median[1,], matrix_median[2,],matrix_median[3,], matrix_median[4,], matrix_median[5,], matrix_median[6,], matrix_median[7,], matrix_median[8,])
+columns <- rbind(columns_mean, columns_median)
+rownames(columns) <- c("Mean", "Median")
+colnames(columns) <- Df_tot$group1
+kable(columns, caption="Mean and Median Amount Spent by Different Customer Marital Status")
+
+tab <- t(table_new)
+# t function --> rotate the rows and columns in a function
+
+barplot(columns, main="Mean and Median Amount Spent by Different Customer Marital Status", beside = TRUE, col=c("red", "blue"), xlim=c(0, 1200), xlab="Marital Status", names.arg=Df_tot$group1, las=2, cex.axis=0.5, horiz=TRUE)
+legend("topright", legend=Df_tot$group1, fill=colors, cex=0.5)
+                      
+#cii
+plot(Df_tot_spent$Total, Df$Income, main="Customer Household Income vs Total Amount Spent", xlab="Total Amount Spent", ylab="Customer Household Income", ylim=c(0, 120000))
+abline(a=0, b=50, col="red", lty=2, lwd=2)
+Df_new <- Df_tot_spent %>% filter(is.na(Income)==FALSE) 
+correlation <- cor(Df_new$Total, Df_new$Income)
+correlation
+#Removed outlier on y-axis where Income surpasses $120000.  
+
+#ciii
+Df_new <- Df_tot_spent %>% filter(MntWines>MntFruits) %>% filter(MntWines>MntMeatProducts) %>% filter(MntWines>MntMeatProducts) %>% filter(MntWines>MntFishProducts) %>% filter(MntWines>MntGoldProds) %>% filter(MntWines>MntSweetProducts) 
+percent <- round(nrow(Df_new)/nrow(Df)*100, 2) 
+percent <- paste(percent, "%")
+percent
+
+Df_new_2 <- Df_new %>% group_by(Marital_Status) %>% count()
+percentage <- round(Df_new_2$n[7]/nrow(Df_new)*100, 2) 
+percentage <- paste(percentage, "%")
+percentage
+
+```
+<p style="color:blue">
+(bii)
+The Pearson Correlation Coefficient result is 0.667, which suggest that there is a weak positive correlation between customer household income and the amount spent by customers. According to the scatterplot that was plotted, it also shows that there is a weak linear correlation between customer household income and the amount spent by customers.
+
+(biii)
+Around 67% of customers spent most on wine in the past 2 years. Among those who spent most on wine, 3.72% of them were widows. 
+</p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>

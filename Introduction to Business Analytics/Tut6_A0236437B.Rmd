@@ -1,0 +1,293 @@
+---
+title: "BT1101-Tutorial 6"
+author: "Lo Zhi Hao"
+date: "10/7/2021"
+output: html_document
+---
+```{r load-libraries, echo=TRUE, message=FALSE, warning = FALSE}
+# intall required packages if you have not (suggested packages: rcompanion, rstatix, Rmisc, dplyr, tidyr, rpivotTable, knitr, psych)
+# install.packages("dplyr") #only need to run this code once to install the package
+# load required packages 
+# library("xxxx")
+
+
+library(tidyverse)
+library(ggplot2) 
+library(dplyr)
+library(rcompanion)
+library(rstatix)
+library(Rmisc)
+library(tidyr)
+library(rpivotTable)
+library(knitr)
+library(psych)
+
+```
+
+## Tutorial 6 Question 2 
+### (To be submitted by 11 Oct 8am, 20 marks)
+
+
+```{r d2-read-dataset, echo=TRUE}
+d2 <- read.csv('Tutorial6_fb-regression.csv')
+
+# inspecting the data set
+summary(d2)
+head(d2)
+
+boxplot(d2$Lifetime.Post.Consumers, d2$Total.Interactions)
+
+#d2_inspect <- d2 %>% filter(Lifetime.Post.Consumers > Total.Interactions) %>% select(Lifetime.Post.Consumers, Total.Interactions, like, share, comment)
+#d2_inspect
+
+# data to remove : Lifetime.Post.Consumers < Total.Interactions as it is not possible to have total interactions that is more than the number of total clicks anywhere on the post
+
+# Removing the erroneous data 
+
+d2_new <- d2 %>% filter(Lifetime.Post.Consumers > Total.Interactions)
+boxplot(d2_new$Lifetime.Post.Consumers, d2_new$Total.Interactions, range=1.5)
+
+summary(d2_new)
+head(d2_new)
+
+# I didnt remove any outliers for this data set as they might be because the post went viral and got more attention than usual. They may not be erroneous in nature and hence I decided against removing them. 
+
+```
+
+
+This question is based off a subset of the dataset collected in the following paper:
+Moro, S., Rita, P., & Vala, B. (2016). Predicting social media performance metrics and evaluation of the impact on brand building: A data mining approach. Journal of Business Research, 69, 3341-3351.
+
+Understanding what factors affect the reach of social media posts on Facebook is important for a company to plan its social media marketing strategy. This data consists of 500 posts collected from the Facebook page of a multinational cosmetics company from January to December 2014. The variables are:
+
+
+- `Category`: content of the post. There are 3 categories: "Action" (including posts about special offers and contests), "Product" (direct advertisement, explicit brand content), and "Inspiration" (non-explicit brand related content, such as inspirational quotes).
+- `Paid`: Whether the company paid Facebook to advertise this post (1 = yes)
+- `Post.Month`: The month the post was made
+- `Post.Weekday`: The day of the week the post was made
+- `Post.Hour`: The time that the post was made
+- `Lifetime.Post.Consumers`: The number of people who clicked anywhere in a post.
+- `comment`: Number of comments on the publication.
+- `like`: Number of "Likes" on the publication.
+- `share`: Number of times the publication was shared.
+- `Total.Interactions`: The sum of "likes," "comments," and "shares" of the post.
+
+
+Imagine that you are a consultant hired by the company. The company wants to maximize `Lifetime.Post.Consumers`, and so they wish to understand what factors predict it. 
+
+
+*Throughout this question (and in fact, throughout the rest of the course), you will be asked to explain your answers in simple English. Imagine you are writing back to the company that hired you. So, in addition to providing the statistical interpretation of the numbers, also provide some description of that in English.*
+
+- Example: if you regress `share` on `like` (`lm(share ~ like...)`) and you're interpreting the coefficient on `like`, say it is X.XX:
+  - Incomplete Example: "A 1-unit increase in `like` increases `share` by X.XX." (who can understand this?. You can write this, but then elaborate):
+  - Better explanation: The more people "like" the post, the more the post is shared as well. For every new like this post gets, it is also shared X.XX times.
+  - Pay attention to the units that the variables are in!
+
+
+
+
+### Q2a)
+
+Between the following variables: (`Lifetime.Post.Consumers`, `Category` and `Paid`), which would be the best choice for the dependent variable, and which would be the independent variables? Why? [3 marks]
+
+
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+<p style="color:blue">
+From my point of view, I will choose `Lifetime.Post.Consumers` as my dependent variable, as it is the variable that the company wants to maximize and it is also affected by the change in `Category` and `Paid` of the post. At the same time, `Category` and `Paid` will be my independent variables. This is because difference in `Category`, ie the contents of the posts, and `Paid`, ie whether the company pays Facebook for advertisements will lead to change in `Lifetime.Post.Consumers`. 
+</p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+
+
+
+### Q2b)
+
+Based on your answer to (a), you identified one dependent variable and 2 independent variables (IV)s
+
+
+
+- What kind of variable is the DV (continuous, ordinal, etc...)? How about the IVs?
+- What kind of graph would be best to show the relationship between DV and the first IV, and between DV and the second IV? (Treat these as 2 separate graphs, not on the same graph)
+- Produce these graphs and comment on them.
+
+Hint: If you choose to graph means, please add standard error bars, this is good practice. 
+- Standard error = standard deviation / sqrt(N), where N is the number of samples in that group. If you are using dplyr, the code could look like this:
+` ... %>% summarize( ... = mean(...), ... = sd(...)/sqrt(n())) %>% ... ` , as the `n()` function in a `summarize()` call would count the number in each group. (There are many ways of summarizing means so you do not *have* to use this method.)
+
+[6 points]
+
+
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+```{r q2b, echo=TRUE}
+
+# creating plot for different categories
+
+stats1 <- summarySE(d2_new, measurevar = "Lifetime.Post.Consumers", groupvars = c("Category"))
+kable(stats1,caption = "Statistics table for Lifetime.Post.Consumers and Category")
+
+ggplot(stats1, aes(x = factor(Category), y = Lifetime.Post.Consumers)) + 
+ geom_bar(stat="Identity", colour = "Black", fill = "skyblue") +   geom_errorbar(aes(ymin = Lifetime.Post.Consumers-se, ymax = Lifetime.Post.Consumers+se), colour = "orange", width = 0.5) + geom_point() + theme_grey()
+
+# creating plot for Paid status
+
+stats2 <- summarySE(d2_new, measurevar = "Lifetime.Post.Consumers", groupvars = c("Paid"))
+kable(stats2,caption = "Statistics table for Lifetime.Post.Consumers and Category")
+
+ggplot(stats2, aes(x = factor(Paid), y = Lifetime.Post.Consumers)) + 
+  geom_bar(stat = "Identity", colour = "Black", fill = "Skyblue") + 
+  geom_errorbar(aes(ymin = Lifetime.Post.Consumers - se, ymax = Lifetime.Post.Consumers + se), colour = "Orange", width = 0.5) + geom_point() + theme_grey()
+
+```
+
+<p style="color:blue">
+DV (`Lifetime.Post.Consumers`) is a continuous variable, while `Category` in IV is categorical, and `Paid` in IV is a binary variable.
+<p>
+
+<p style="color:blue">
+Barplot with standard error bars are ideal for the relationship between DV and both IVs. 
+</p>
+
+<p style="color:blue">
+From the barplot with error bars, we can know that the mean of 'Product' posts is  the highest between all categories in terms of the number of people who clicked into it. We can also observe that the mean of people clicking into the post is higher when the company paid Facebook to advertise the post. 
+<p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+
+
+
+
+
+### Q2c)
+
+Make a new variable that is the base10 log of the DV. (No need to run any additional checks for normality on the new variable). Use the two IVs you identified as regressors in a linear model to predict this new transformed variable. Interpret the intercept and the coefficients. 
+
+In addition to your code, please write your answer as if you are writing to the company contact (the person that hired you). You don't have to offer prescriptions, but just say clearly in plain English what are the results of your model. [7 marks]
+
+
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+```{r q2c, echo=TRUE}
+
+logd2 <- d2_new %>% mutate(log_Lifetime_Post_Consumers = log10(Lifetime.Post.Consumers))
+
+# creating lm
+lm1 <- lm(log_Lifetime_Post_Consumers ~ Category + Paid, logd2)
+summary(lm1)
+
+# category action 
+# Y ~ 2.66 + 0.095 * Paid 
+# category inspiration 
+# Y ~ (2.66 + 0.06) + 0.095 * Paid  
+# category Product
+# Y ~ (2.66 + 0.126) + 0.095 * Paid 
+
+# 10^(0.095) = 1.244515
+
+```
+
+<p style="color:blue">
+**Interpretations: ** 
+</p>
+
+<p style="color:blue">
+(Intercept) 
+The average `Lifetime.Post.Consumers`, ie the number of clicks into the post, when the post is under category 'Action' and with no advertisement fees paid to Facebook is 10^2.66 = 456 times.  
+<p>
+
+<p style="color:blue">
+(Paid)
+The average `Lifetime.Post.Consumers`, ie the number of clicks into the post, when the post is under category 'Action' and with advertisement fees paid to Facebook is 10^(2.66 + 0.095) = 569 times.
+<p>
+
+<p style="color:blue">
+(CategoryInspiration)
+The average `Lifetime.Post.Consumers`, ie the number of clicks into the post, when the post is under category 'Inspiration' and with no advertisement fees paid to Facebook is 10^(2.66 + 0.06) = 525 times. 
+<p>
+
+<p style="color:blue">
+(CategoryProduct)
+The average `Lifetime.Post.Consumers`, ie the number of clicks into the post, when the post is under category 'Product' and with no advertisement fees paid to Facebook is 10^(2.66 + 0.129) =  615 times. 
+<p>
+
+<p style="color:blue">
+From the linear regression model, we can conclude that the number of consumers clicking on the post is highest when the category of the post is under 'Product' category, followed by category 'Inspiration' and lastly the 'Action' category. At the same time, we can see that paying Facebook to advertise the posts can increase the number of consumers clicking on the post by 1.245 times when compared with the original click number. 
+<p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+
+
+  
+  
+
+
+### Q2d)
+Your company contact asks you to investigate if posts made on the weekend affects the DV.
+
+- Make a new variable that indicates whether the post was made on the weekend.
+- Use this new variable in a linear model to predict the same dependent variable as in (c) (i.e., the log10 variable). 
+- Interpret the intercept and the coefficients on your variable. 
+
+Does posting the post on the weekend have an effect? Again, in addition to your code, write your answer as if you are writing to the company contact. [3 marks]
+
+
+
+
+
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+```{r q2d, echo=TRUE}
+
+# mutating a new variable
+weekendd2 <- logd2 %>% mutate(is_weekend = ifelse(Post.Weekday == "Saturday" | Post.Weekday == "Sunday", 1, 0))
+
+# creating lm 
+lm2 <- lm(log_Lifetime_Post_Consumers ~ is_weekend, weekendd2)
+summary(lm2)
+
+# Y ~ 2.75 + (-0.045) * is.weekend
+
+```
+
+<p style="color:blue">
+(Intercept)
+The average `Lifetime.Post.Consumers`, which is the number of clicks into the post by consumers when the day is a weekday is 10^2.75 = 562 times. 
+</p>
+
+<p style="color:blue">
+(is_weekend)
+The average `Lifetime.Post.Consumers` , which is the number of clicks into the post by consumers when the day is a weekend is 10^(2.75 - 0.045) = 507 times.
+<p>
+
+<p style="color:blue">
+From the linear regression model, the average `Lifetime.Post.Consumers`, which is the number of clicks into the post by consumers on weekdays is slightly higher than on weekends. This suggests that `is_weekend`, ie whether the day is a weekend or not,  will slight decrease the average `Lifetime.Post.Consumers` , ie the number of clicks on the post. 
+<p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+
+
+
+### Q2e)
+
+[1 mark for submitting a html.]
+
+
+
+
+
+******** ----------
+
+

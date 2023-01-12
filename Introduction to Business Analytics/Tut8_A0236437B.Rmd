@@ -1,0 +1,287 @@
+---
+title: "BT1101-Tutorial 8"
+author: "Lo Zhi Hao"
+date: "10/21/2021"
+output: html_document
+---
+## Tutorial 8: Data Mining
+
+```{r load-libraries, echo=TRUE, message = F, warning = F}
+# intall required packages if you have not (suggested packages: rcompanion, rstatix, Rmisc, dplyr, tidyr, rpivotTable, knitr, psych)
+# install.packages("dplyr") #only need to run this code once to install the package
+# load required packages 
+# library("xxxx")
+
+library(tidyverse)
+library(ggplot2) 
+library(psych) # for pairs.panels()
+library(factoextra) # for fviz_cluster()
+library(knitr)
+```
+
+## Tutorial 8 Part 2: For Submission
+## Question 2 
+### (To be submitted by 25 Oct 8am, 20 marks)
+
+
+This dataset is publically available from: https://www.kaggle.com/fedesoriano/company-bankruptcy-prediction which in turn was taken from https://archive.ics.uci.edu/ml/datasets/Taiwanese+Bankruptcy+Prediction and based off the following paper:
+
+Liang, D., Lu, C.-C., Tsai, C.-F., and Shih, G.-A. (2016) Financial Ratios and Corporate Governance Indicators in Bankruptcy Prediction: A Comprehensive Study. European Journal of Operational Research, vol. 252, no. 2, pp. 561-572.
+https://www.sciencedirect.com/science/article/pii/S0377221716000412
+
+The data consists of measurements of companies on the Taiwan Stock Exchange from 1999 to 2009, and includes a variable to define if the company went bankrupt or not. Here we'll practice our data mining skills by building a simple model to predict whether a company would go bankrupt.
+
+*(I apologize if there are slight errors in the variable definitions; I'm not a finance professor, so I'm just using my judgment and common-sense.)
+
+
+```{r read-in-data, echo=T, eval=T}
+
+#### Prof's code for doing stratified partitioning with the data (i.e., making sure there is an equal positive/negative ratio across the Train and Test splits)
+#### the idea is to sample the Train/Test values separately for positive cases, and for negative cases. This should minimize the imbalance.
+## set.seed(1) # for reproducibility.
+## d2 <- read.csv("Tutorial8_bankruptcy.csv") %>% 
+##   group_by(Bankrupt.) %>%
+##   mutate(partition = sample(c("Train", "Test"), size=n(), replace=T, prob=c(.7, .3))) %>% ungroup() %>% relocate(partition) %>%
+##   write.csv("Tutorial8_bankruptcy.csv", row.names=F)
+
+
+
+d2 <- read.csv("Tutorial8_bankruptcy.csv") %>% 
+  select(partition, Bankrupt., ROA.A..before.interest.and...after.tax, Cash.flow.rate, Net.Value.Per.Share..A., Cash.Flow.Per.Share, Debt.ratio.., Operating.profit.Paid.in.capital, Working.Capital.to.Total.Assets)
+```
+
+
+The dataset has many variables, but we'll be picking just 8 variables, in addition to the Bankrupt? variable, which is read into R as `Bankrupt.`
+
+- `Bankrupt.`: Class label; 1 if the company went bankrupt, 0 if not
+- `ROA.A..before.interest.and...after.tax`: Return On Total Assets, before interest and after tax, in %
+- `Cash.flow.rate`: Rate of cash flow.
+- `Net.Value.Per.Share..A.`: Book Value Per Share A. (i.e., price of each share)
+- `Cash.Flow.Per.Share`: Cash flow per Share A.
+- `Debt.ratio..`: Liability divided by Total Assets (as a %)
+- `Operating.profit.Paid.in.capital`: Operating Profit divided by Capital 
+- `Total.Asset.Turnover`: Total Asset Turnover
+- `Working.Capital.to.Total.Assets`: Ratio of Working Capital to Total Assets
+
+
+- in addition, there is a `partition` variable that indicates a Training (70%) / Testing 30% split which you will find useful from Q2c onwards.
+
+### Q2a)
+
+The original dataset has 95 independent variables, which may seem like a lot. But if we zoom in further and take a look at the first few independent variables of the original dataset, they include this group of variables:
+
+- Operating Gross Margin: Gross Profit divided by Net Sales
+- Realized Sales Gross Margin: Realized Gross Profit divided by Net Sales
+
+and here's another group:
+
+- Operating Profit Rate: Operating Income divided by Net Sales
+- Pre-tax net Interest Rate: Pre-Tax Income divided by Net Sales
+- After-tax net Interest Rate: Net Income divided by Net Sales
+
+If you notice, these variables seem quite similar to each other (within the same group), and they may differ only by a little amount because of the way they are defined. What is an issue that we learnt about in class that could occur if say, we put all of these variables into a logistic regression model to predict Bankruptcy?
+
+(This happens often in real-world datasets. If you're interested you can take a look at the entire dataset by reading in the datafile without the "select()" command, and examine those variables further. There are a lot more of these similar variables in the dataset. You may also go to the original URL for the full description of the variables). 
+
+[3 marks]
+
+```{r q2a, echo = T}
+
+head(d2)
+summary(d2)
+
+```
+
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+<p style="color:blue">
+It might lead to multicollinearity, as the variables in the group described are quite relatable to each other, ie increase in one will likely lead to increase in another variable, hence there is a high chance that there is a high level of intercorrelations between the grouped variables. As such, it may lead to less reliable results from the multiple regression model. 
+</p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+
+
+
+### Q2b)
+
+Examine the Bankrupt variable. How many positive instances are there, compared to negative instances? If I built a model that predicted all "Not Bankrupt" (0), what would its accuracy be?
+
+Thus, if someone told you that they built a model that achieved **92% accuracy** on this dataset, would you be impressed? Why or why not?
+
+*Note, this is something we see quite commonly in real-life datasets, where the dataset is imbalanced with respect to the positive and negative instances. (This gives some problems with training models, which we have to be careful with). This is also why when we make train/test splits we need to make sure the ratio is equal across the train and test partitions, known as stratified sampling.
+
+[5 marks]
+
+```{r q2b, echo = T}
+
+# grouping according to whether the company went bankrupt or not 
+
+tab <- table(d2$Bankrupt.)
+kable(tab, caption = "Bankrupt Table")
+
+# Accuracy
+# TP + TN / TP + TN + FP + FN
+
+percent <- 6599 / nrow(d2) *100
+round(percent, 2)
+# Accuracy is 96.77%
+
+```
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+<p style="color:blue">
+There is 220 positive instances and 6599 negative instances. The Accuracy of the model that predicted all "Not Bankrupt" is 96.77%. 
+</p>
+
+<p style="color:blue">
+The model is considered impressive in my opinion, as there are 95 regressors in the original dataset, and the ability to predict all "Not Bankrupt" at a 92% Accuracy taking into account there are so many variables, and the person creating the model by selecting the correct regressors from all the regressors is an impressive achievement. 
+<p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+
+
+
+### Q2c)
+
+Taking the subset of the variables that we've helped you to extract, please run a Principal Component Analysis on the independent variables, using `prcomp(..., center=T, scale=T)`  
+
+- How many principal components are needed to explain >80% of the variance in the data? Let's call this number **X**
+
+Let's use these **X** principal components as regressors to predict Bankruptcy.
+
+- First, make new variables in your data frame that correspond to these **X** principal components. You can use this following code chunk to get the first PC.
+
+```
+df <- df %>% mutate(
+  pc1 = <PCA OBJECT>$x[,"PC1"], ...
+)
+```
+
+- Next, split your dataset into Train and Test sets. That is, create one data frame that contains only the observations for which `partition` is `Train`. And then create another for `Test`.
+- Finally, using the Training set only, fit a logistic regression to classify the companies into Bankrupt vs not.
+
+
+[5 marks]
+
+```{r q2c, echo = T}
+
+d2X <- d2 %>% select(-partition, -Bankrupt.)
+colnames(d2X)
+
+pca1 <- prcomp(d2X, scale = T, center = T)
+summary(pca1) 
+# up to pc4
+
+d2 <- d2 %>% mutate(
+  pc1 = pca1$x[,"PC1"],
+  pc2 = pca1$x[,"PC2"],
+  pc3 = pca1$x[,"PC3"],
+  pc4 = pca1$x[,"PC4"]
+)
+
+head(d2)
+
+d2train <- d2 %>% filter(partition == "Train")
+d2test <- d2 %>% filter(partition == "Test")
+
+m1 <- glm(Bankrupt. ~ pc1 + pc2 + pc3 + pc4, d2train, family = "binomial")
+summary(m1)
+
+```
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+<p style="color:blue">
+</p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+
+
+
+
+### Q2d)
+
+Finally, let's check out the performance of our classification model on the Test set. Use
+```
+predict( GLM_OBJECT , DATA_FRAME , type="response")
+```
+to predict the `probabilities` of the classes. (Note, if you don't specify `type="response"`, predict will return the value of the link function (i.e., the logits). `type="response"` will return probabilities).
+
+- Store the probabilities back into the Test set.
+- Round off the probabilities, such that if p>=0.5, the predicted class is "1" (Bankrupt), but if p<.5, the predicted class is "0" (not bankrupt).
+- Now, compare your model's predicted class with the true class. 
+
+- What is the classification accuracy of your model?
+- What is the precision?
+- What is the recall? 
+- What is the F1-score?
+
+Note: don't worry if the accuracy is not higher than what you wrote about in (a). It's difficult to train a good model for very imbalanced datasets! And you can see why accuracy is not the only metric we should be looking at.
+
+[6 marks]
+
+```{r q2d, echo = T}
+
+d2test$PredictionProb <- predict(m1, d2test, type = "response")
+#head(d2test)
+
+d2test$outcome <- round(d2test$PredictionProb)
+head(d2test)
+
+d2test$predict <- factor(round(d2test$PredictionProb), 
+                         levels = c(0, 1), 
+                         labels = c("Non-Bankrupt Pred", "Bankrupt Pred"))
+table(d2test$predict)
+
+table(d2test$Bankrupt., d2test$predict)
+
+
+# Accuracy 
+# TP + TN / TP + TN + FN + FP
+# (9 + 2016) / (9 + 2016 + 61 + 8) = 96.70%
+# Precision
+# TP / TP + FP
+# 9 / (9 + 8) = 52.94%
+# Recall
+# TP / TP + FN
+# 9 / (9 + 61) = 12.85%
+# f1- Score
+# 2 * P * R / (P + R)
+# 2 * (0.5294) * (0.1285) / (0.5294 + 0.1285) = 20.68%
+
+```
+
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+<p style="color:blue">
+  Accuracy 
+{TP + TN / TP + TN + FN + FP}
+(9 + 2016) / (9 + 2016 + 61 + 8) = 96.70%
+<p>
+<p style="color:blue">
+  Precision
+{TP / TP + FP}
+9 / (9 + 8) = 52.94%
+<p>
+<p style="color:blue">
+  Recall
+{TP / TP + FN}
+9 / (9 + 61) = 12.85%
+<p>
+<p style="color:blue">
+  f1- Score
+{2 * P * R / (P + R)}
+2 * (0.5294) * (0.1285) / (0.5294 + 0.1285) = 20.68%
+</p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+

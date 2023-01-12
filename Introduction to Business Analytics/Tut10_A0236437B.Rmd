@@ -1,0 +1,212 @@
+---
+title: "BT1101-Tutorial 10"
+author: "Lo Zhi Hao"
+date: "11/7/2021"
+output: html_document
+---
+## Tutorial 10: Linear Optimization
+
+```{r load-libraries, echo=TRUE}
+# intall required packages if you have not (suggested packages: rcompanion, rstatix, Rmisc, dplyr, tidyr, rpivotTable, knitr, psych)
+# install.packages("dplyr") #only need to run this code once to install the package
+# load required packages 
+# library("xxxx")
+
+library(lpSolve)
+```
+
+## Tutorial 10 Part 2: For Submission
+## Question 2 
+### (To be submitted by 8 Nov 8am, 20 marks)
+
+
+You have just been hired by Charlie and Keisha, an up-and-coming hand-wear brand. They are most famous for three products: (i) fashion gloves, (ii) winter gloves, and (iii) work gloves. 
+
+- Fashion gloves cost \$15 to make, takes up 0.15 cubic-meters of space, and are sold for \$45.
+- Winter gloves cost \$20 to make, takes up 0.35 cubic-meters of space, and are sold for \$70.
+- Work gloves cost \$45 to make, takes up 0.25 cubic-meters of space, and are sold for \$135.
+
+The company has \$8,000 of capital to make this next batch of products, and their store has 1,000 cubic-meters of storage space. The company also wants to ensure at least 300 pieces of each product.
+
+PLEASE IGNORE ALL INTEGER CONSTRAINTS IN THIS QUESTION.
+
+
+#### Q2a) 
+
+The company wants you to recommend how many of each type of gloves they should make, in order to maximize *profits* (revenue - costs).
+
+Are there any feasible solutions, and if so, what is the optimal solution, and what is the profit associated with this solution? 
+
+
+[3 points]
+
+Maximise total profit using decision variables $X_1$ = Fashion Gloves, $X_2$ = Winter Gloves, $X_3$ = Work Gloves | Profit = 30 $X_1$ + 50 $X_2$ + 90 $x_3$
+--- | ---
+Subject to |
+Capital Constraints | 15 $X_1$ + 20 $X_2$ + 45 $X_3$ $\leq$ 8000
+Space Constraints | 0.15 $X_1$ + 0.35 $X_2$ + 0.25 $X_3$ $\leq$ 1000
+Product Constraint $X_1$ | $X_1$ + $\quad$ + $\quad$ $\geq$ 300
+Product Constraint $X_2$ | $\quad$ + $X_2$ + $\quad$ $\geq$ 300
+Product Constraint $X_3$ | $\quad$ + $\quad$ + $X_3$ $\geq$ 300
+Non negative Constraint $X_1$ | $X_1$ + $\quad$ + $\quad$ $\geq$ 0
+Non negative Constraint $X_2$ | $\quad$ + $X_2$ + $\quad$ $\geq$ 0
+Non negative Constraint $X_3$ | $\quad$ + $\quad$ + $X_3$ $\geq$ 0
+
+```{r q2a, echo = T}
+
+objective.fn <- c(30, 50, 90)
+constraint.mat <- matrix(
+  c(15, 20, 45, 0.15, 0.35, 0.25, 1, 0, 0, 0, 1, 0, 0, 0, 1),
+  ncol = 3, 
+  byrow = T
+)
+constraint.fnc <- c("<=", "<=", ">=", ">=", ">=")
+constraint.res <- c(8000, 1000, 300, 300, 300)
+
+# constructing lp
+lp.solution <- lp("max", objective.fn, constraint.mat, constraint.fnc, constraint.res, compute.sens = T)
+lp.solution$solution 
+lp.solution
+```
+There is no feasible solution. There is no way to meet all the constraints simultaneously. For example, the cost needed to meet the product constraints is 15 * 300 + 20 * 300 + 45 * 300 = 24, 000. This is already higher than the capital budget provided for the production of the gloves.  
+
+
+#### Q2b) 
+
+Your company contact gets in touch with you and says "oops, sorry, I made a typo in our last correspondence. We are supposed to have \$80,000 in capital, not \$8,000". 
+
+Now with this updated constraint, please solve this optimization problem. Please show your working (as we usually do). Write out clearly all the decision variables, objective function and constraints (using the table template provided above). Please include the non-negativity constraints.
+
+What is the optimal profit, and what is the optimal product mix?
+
+Finally, in addition to providing your code, please write your recommendation as if you are writing to the company contact. 
+
+
+[10 marks]
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+Maximise total profit using decision variables $X_1$ = Fashion Gloves, $X_2$ = Winter Gloves, $X_3$ = Work Gloves | Profit = 30 $X_1$ + 50 $X_2$ + 90 $X_3$
+--- | ---
+Subject to |
+Capital Constraints | 15 $X_1$ + 20 $X_2$ + 45 $X_3$ $\leq$ 80000
+Space Constraints | 0.15 $X_1$ + 0.35 $X_2$ + 0.25 $X_3$ $\leq$ 1000
+Product Constraint $X_1$ | $X_1$ + $\quad$ + $\quad$ $\geq$ 300
+Product Constraint $X_2$ | $\quad$ + $X_2$ + $\quad$ $\geq$ 300
+Product Constraint $X_3$ | $\quad$ + $\quad$ + $X_3$ $\geq$ 300
+Non negative Constraint $X_1$ | $X_1$ + $\quad$ + $\quad$ $\geq$ 0
+Non negative Constraint $X_2$ | $\quad$ + $X_2$ + $\quad$ $\geq$ 0
+Non negative Constraint $X_3$ | $\quad$ + $\quad$ + $X_3$ $\geq$ 0
+
+```{r q2b, echo = T}
+
+objective.fn <- c(30, 50, 90)
+constraint.mat <- matrix(
+  c(15, 20, 45, 0.15, 0.35, 0.25, 1, 0, 0, 0, 1, 0, 0, 0, 1),
+  ncol = 3, 
+  byrow = T
+)
+constraint.fnc <- c("<=", "<=", ">=", ">=", ">=")
+constraint.res <- c(80000, 1000, 300, 300, 300)
+
+# constructing lp
+lp.solution <- lp("max", objective.fn, constraint.mat, constraint.fnc, constraint.res, compute.sens = T)
+lp.solution$solution 
+lp.solution
+```
+
+<p style="color:blue">
+With the capital constraint being \$ 80, 000 instead of \$ 8, 000, the optimal product mix is 300 fashion gloves, 2241.8605 winter gloves and 681.3953 work gloves. The maximised profit associated with this product mix is \$ 182, 418.60. 
+
+   Thus, to maximised the profit from the constraints that were provided, the company should be producing 300 fashion gloves, 2241.86 winter gloves and 681.39 work gloves for the next batch of products. The predicted profit that is associated with this product mix is $ 182, 418.60.
+</p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+
+
+
+
+
+
+
+#### Q2c) 
+In addition to the recommendation you wrote in (b), you also remembered that you are an expert in interpreting shadow prices. 
+
+- Print out the shadow prices of your solution from (b). 
+- Please interpret each and every one of the values. Also include a discussion of which constraints are binding.
+
+In addition to providing your code, remember to write your answer as if you are addressing the company contact. 
+
+[4 marks]
+
+
+
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+```{r q2c, echo = T}
+
+lp.solution$duals 
+```
+
+<p style="color:blue">
+  By increasing the Capital Constraint by \$1, we can expect an increase in our optimal profit of \$1.77. Hence, Capital Constraint is binding.
+  By increasing the Space Constraint by 1 cubic-meter, we can expect an increase in our optimal profit of \$41.86. Hence, Space Constraint is binding. 
+  By increasing the Product Constraint for $X_1$ by 1, we can expect a decrease in our optimal profit of \$2.79. Hence, Product Constraint for $X_1$ is binding.
+  By increasing the Product Constraint for $X_2$ by 1, we do not expect any changes to the optimal profit. Hence, Product Constraint for $X_2$ is non-binding.
+  By increasing the Product Constraint for $X_3$ by 1, we do not expect any changes to the optimal profit. Hence, Product Constraint for $X_3$ is non-binding.
+  For the non-negativity Constraints of Product $X_1$, $X_2$ and $X_3$, by increasing the Constraints by 1, we do not expect any changes to the optimal profit. Hence, the non-negativity Constraints are non-binding. 
+  
+  Thus, by increasing the capital for the next bath of product by \$1, the company can expect a \$1.77 increase in the maximised profit. Meanwhile, by increasing the space of the storage space by 1 cubic-meters, the company can expect a \$41.86 increase in the maximised profit. By increasing the minimum number of fashion gloves production by 1, the company can expect a decrease of \$2.79 in maximised profit. At the same time, increasing the minimum number of winter and work gloves by 1 does not have any changes to the maximised profit. 
+</p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+
+
+#### Q2d)  
+Your company contact is not satisfied with your answer from (b). Their Fashion Gloves are their flagship product, are made with their patented Feel-Shiok-a material, and are cool enough to be worn in tropical Singapore. They want to sell more of these in the market, but your solution from (b) suggests a low number of Fashion Gloves. 
+
+Can you identify why your solution suggests a low number of fashion gloves? And could you recommend them something that they can do to make it optimal to produce more Fashion Gloves?
+
+In addition to providing your code, remember to write your answer as if you are addressing the company contact. 
+
+
+[2 marks]
+
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+```{r 2d, echo= TRUE}
+
+lp.solution$sens.coef.from
+lp.solution$sens.coef.to
+
+```
+
+<p style="color:blue">
+  This might be because fashion gloves provides the least in terms of profitability in all three types of gloves. It takes up 0.15 cubic-meters of storage, which is not significantly lesser than other gloves types, while also does not deliver a higher profit-to-cost ratio than the other gloves type. 
+
+  Assuming the cost price remains constant, one way to make it optimal to produce more fashion gloves is to increase the profit per fashion gloves to \$32.79. Hence, the company should raise the price of fashion gloves and sell the fashion gloves at a price of at least \$47.79 to make it optimal to produce more fashion gloves
+</p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+
+
+### Q2e)
+
+[1 mark for submitting a html.]
+
+
+
+
+
+******** ----------
+
+
+

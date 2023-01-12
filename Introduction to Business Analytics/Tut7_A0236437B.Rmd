@@ -1,0 +1,271 @@
+---
+title: "BT1101-Tutorial 7"
+author: "Lo Zhi Hao"
+date: "10/15/2021"
+output: html_document
+---
+
+## Tutorial 7: Time Series Forecasting
+
+```{r load-libraries, echo=TRUE, message=FALSE, warning = F}
+# intall required packages if you have not (suggested packages: rcompanion, rstatix, Rmisc, dplyr, tidyr, rpivotTable, knitr, psych)
+# install.packages("dplyr") #only need to run this code once to install the package
+# load required packages 
+# library("xxxx")
+
+library(tidyverse)
+library(ggplot2) 
+library(TTR)
+
+
+```
+## Tutorial 7 Part 2: For Submission
+## Question 2 
+### (To be submitted by 18 Oct 8am, 20 marks)
+
+In today's tutorial we will be combining data from two public sources. 
+
+The first is: a large public and continually updated dataset on Covid-19, called the *Our World in Data* COVID-19 Dataset. https://github.com/owid/covid-19-data/tree/master/public/data. This dataset is updated daily, and so we have done some processing to select a subset of the data for this tutorial. 
+
+- We are interested in the number of Covid-19 cases in Singapore as a function of time. The data begins on 23 January 2020 (and we assume that there are 0 cases before that). 
+- `location`: Singapore
+- `date`: Date of observation
+- `new_cases_smoothed_per_million`: New confirmed cases of COVID-19 per 1,000,000 people, smoothed over the past 7 days. That is, an entry for 2020-01-23 would give the average of the week ending on 23 January 2020.
+
+
+The second dataset comes from Google Trends (https://trends.google.com/). Google Trends allows you to see how popular search queries are, and you can refine your search by Date as well as by Geographic Region. Here, we will be concentrating on how much people searched for Covid-19, from the 2 years of 6 October 2019 till 2 October 2021. How you can obtain this dataset (and )
+
+- using the Google Trends API, search for "Coronavirus disease 2019 + Covid + Covid-19"
+- set location: Singapore. 
+- set Dates to 10/1/19 to 9/30/21 (American style dates). See screenshot below.
+
+The second dataset, Google Trends, has two (renamed) variables:
+
+- `date`: Date of observation
+- `search_vol`: Search volume for the week starting on `date`. 
+    - That is, an entry for 2021-09-26 gives the search volume of the week beginning September 26 and ending October 2.
+    - `search_vol` is normalized such that the maximum value in this range is 100, and that numbers from 0-100 indicate what was the fraction of search volume in that week. That is, a week that has a score of 80 will have double the number of searches as compared to a week that has a score of 40.
+    - additional information from the Google tooltip: "Numbers represent search interest relative to the highest point on the chart for the given region and time. A value of 100 is the peak popularity for the term. A value of 50 means that the term is half as popular. A score of 0 means there was not enough data for this term."
+
+
+See the screenshot below, which indicates that for the period of Sep 26 to Oct 2, there is a normalized search index of 67. (You can verify that this is the value in the dataset on this date) 
+
+
+The code below will read in the two datasets and do some simple munging for you.
+
+```{r prepping-covid-dataset, echo=T, eval=T}
+# Prof's code to prep the dataset
+trends_data <- read.csv('Tutorial7-trends-2019-10-01-to-2021-09-30-SG.csv', skip=1) %>% 
+  rename(date = Week,
+         search_vol = Coronavirus.disease.2019...Covid...Covid.19...Singapore.) %>%
+  mutate(date = as.Date(date))
+
+
+covid_full <- read.csv('Tutorial7-owid-covid-data-2021-10-08.csv')
+
+covid_subset <- covid_full %>% mutate(date = as.Date(date)) %>%
+  filter(location %in% c("Singapore"),
+         date %in% trends_data$date) %>% ### This step is to pick the same "Date" values as in trends_data
+  select(location, date, new_cases_smoothed_per_million)
+```
+
+
+
+
+### Q2a)
+
+In this question we will learn how we can use search engine trends to gain a little bit of insight. The first dataset, `covid_subset`, contains the number of new cases of Covid-19 in Singapore, while the second dataset, `trends_data`, contains the volume of Google searches originating from Singapore that contain the terms "Covid", "Covid-19", or "Coronavirus Disease 2019".
+
+First, however, we have a little bit of an issue. Based on the documentation above, the `new_cases_smoothed_per_million` and the `search_vol` variables are not aligned (they are for different date ranges). 
+
+Please add the `search_vol` variable from the `trends_data` dataframe into the `covid_subset` dataframe, and please adjust the `search_vol` variable accordingly so that the data is aligned. (Note that even after you adjust the variable, we may still be off by 1 day or so, please ignore this.) 
+
+Please include a short written explanation to explain what the issue is, and what you did to fix it. 
+
+Note that this problem often occurs in real life, because datasets may sometimes come with slightly different definitions for dates, so whenever we're dealing with multiple datasets we have to worry about how to correctly merge, or combine them.
+
+[3 marks]
+
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+```{r q2a, echo = TRUE}
+
+# inspecting the dataset
+view(trends_data)
+
+# view(covid_subset)
+
+# appending search volume to covid subset
+
+#new_trend_data <- trends_data$search_vol[16:103] 
+#covid_subset <- covid_subset %>% mutate(search_vol = new_trend_data)
+#view(covid_subset)
+
+new_trend_data <- trends_data %>% filter(date >= "2020-01-19" & date <= "2021-09-19") %>% select(search_vol)
+
+covid_subset <- covid_subset %>% mutate(search_vol = new_trend_data$search_vol)
+
+view(covid_subset)
+head(covid_subset)
+
+# another way is using merge(x, y , all= T)
+
+#test <- merge(trends_data, covid_subset, all = T)
+#view(test)
+
+```
+
+<p style="color:blue">
+The problem I encounter when solving merging the data sets is that both data sets have different number of data points and both start from different dates. Hence, the data on the two data sets does not align with each other. To solve the problem, I filter out the dates before the week of 26-01-2020 as the dates before 26-01-2020 is not required in our analysis of Covid19 in Singapore. At the same time, as the `search_vol` is recording the week before the date, and `new_cases_smoothed_per_million` is recording the week after the date, I selected the data points in `search_vol` which is a week earlier then `new_cases_smoothed_per_million`. Then, I append the new search trends data into the Covid19 subset. 
+</p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+
+
+### Q2b)
+
+Great, let's look at the data. Please provide a line plot of the two variables, the (adjusted) search volume, and the number of covid cases, on the same graph. Make sure your graph has a legend so that we can tell the graphs apart!
+
+Overall, do either of the two graphs show (i) trends, (ii) seasonality, and/or (iii) cycles? Please discuss.
+
+
+
+[7 marks]
+
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+```{r q2b, echo = TRUE}
+
+ggplot(covid_subset) +
+  geom_line(aes(x = date, y = new_cases_smoothed_per_million, color = "New Cases Smoothed Per Million")) + 
+  geom_line(aes(x = date, y = search_vol, color = "(Adjusted) Search Volume")) +
+  labs(title = "Line Plot of New Cases Smoothed Per Million and (Adjusted) Search Volume", y = "New Cases Smoothed Per Million / (Adjusted) Search Volume", x = "Date") +
+  theme_bw()
+
+```
+
+<p style="color:blue">
+For `New Cases Smoothed Per Million`, there is no general trend from the graph we plotted. However, there is an upwards trend in the early months, followed by a downwards trend until eventually the graph enters a stationary state for some period of time from around 2020-08-09 until 2021-07-11. Then, there is an upwards trend starting from 2021-07-11. The line for `New Cases Smoothed Per Million` does not seem to be affected by seasonality, and it is not sufficient to suggest that `New Cases Smoothed Per Million` is cyclical, as there are not enough cycles across the time period to make the conclusion that `New Cases Smoothed Per Million` is cyclical. 
+</p>
+
+<p style="color:blue">
+For `(Adjusted) Search Volume`,there is no general trend from the graph we plotted. However, there is an upwards trend in the early months, followed by a downwards trend until eventually the graph enters a stationary state for some period of time from around 2020-08-09 until 2021-04-11. Then, there is another few cycles of upwards and downwards trend from the line for `(Adjusted) Search Volume`. The line for `(Adjusted) Search Volume` does not seem to be affected by seasonality, and it is not sufficient to suggest that `(Adjusted) Search Volume` is cyclical, as there are not enough cycles over a sufficiently long enough period of time to make the conclusion that `(Adjusted) Search Volume` is cyclical. 
+<p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+
+
+
+
+### Q2c)
+
+
+If we consider the two graphs from about January 26, 2020 till July 26, 2020 (the first few months of the pandemic), what do you notice? Does it seem like one variable is leading the other variable? If so, which is leading, and why do you think so (i.e., offer some interpretation as to why one may be leading the other, or not)?
+
+What about during the period from July 4, 2021 until September 5, 2021? Does it seem like one variable is leading the other variable? If so, which is leading, and why do you think so (i.e., offer some interpretation as to why one may be leading the other, or not)?
+
+
+(You may make new plots if it helps you to discuss).
+
+[This part is not graded] By the way, you may notice there's a peak in Google searches from Singapore in the period May 2021 till mid June 2021, but there's no corresponding changes in Covid-19 cases (at least, at this scale). This roughly corresponds to when Singapore reverted to "Phase 3 / Phase 2 Heightened Alert", starting 8 May 2021 and going back and forth Phase3/Phase2 until August... Food for thought to discuss with your classmates why you think this behavior shows up in the Google search data.
+
+[6 marks]
+
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+```{r q2c, echo = TRUE}
+
+# graphs for better visualisations
+jan_to_july <- covid_subset[1:27, ]
+
+july_to_sep <- covid_subset[76:85 ,]
+
+ggplot(jan_to_july, aes(x = date)) +
+  geom_line(aes(y = new_cases_smoothed_per_million, color = "New Cases Smoothed Per Million")) +
+  geom_line(aes(x = date, y = search_vol, color = "(Adjusted) Search Volume")) +
+  labs(title = "Line Plot of New Cases Smoothed Per Million and (Adjusted) Search Volume", y = "New Cases Smoothed Per Million / (Adjusted) Search Volume", x = "Date") +
+  theme_bw()
+
+ggplot(july_to_sep, aes(x = date)) +
+  geom_line(aes(y = new_cases_smoothed_per_million, color = "New Cases Smoothed Per Million")) +
+  geom_line(aes(x = date, y = search_vol, color = "(Adjusted) Search Volume")) +
+  labs(title = "Line Plot of New Cases Smoothed Per Million and (Adjusted) Search Volume", y = "New Cases Smoothed Per Million / (Adjusted) Search Volume", x = "Date") +
+  theme_bw()
+    
+```
+
+<p style="color:blue">
+  From January 26, 2020 till July 26, 2020, from the graph, we can see that apparently `(Adjusted) Search Volume` is the leading variable, and `New Cases Smoothed Per Million` is the lagging variable. This might be because of the delay from Singapore residents in seeking medical help due to Covid 19, as people might search online for symptoms of Covid 19 before seeking medical help and the Covid 19 has an incubation period just before the symptoms. 
+<p>
+
+<p style="color:blue">
+  From July 4, 2021 until September 5, 2021, from the graph, we can see that apparently `(Adjusted) Search Volume` and `New Cases Smoothed Per Million` are coincident as the two variables co vary across the interval. This implies that both the variable may be correlated. This also suggests that people tend to search more for Covid 19 related news when cases increases and less when number of cases decreases. At the same time, we can see that `(Adjusted) Search Volume` is higher than `New Cases Smoothed Per Million` for all the weeks in the period. This might be because of the higher concern and understanding towards Covid 19 among the community.  
+</p>
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+
+
+
+
+
+### Q2d)
+
+Finally, please use the search volume variable as a regressor to predict the number of new cases, across the entire range of the data. Please interpret the coefficients and what they mean.
+
+(Not graded, but food for thought: what are some limitations of this linear model, given what you've observed about the data from a-d?)
+
+[3 marks]
+
+<p style="color:red">**BEGIN: YOUR ANSWER**</p>
+
+```{r q2d, echo = TRUE}
+
+# using search volume as a regressor 
+
+lm1 <- lm(new_cases_smoothed_per_million ~ search_vol, covid_subset)
+summary(lm1)
+
+# when the seach volume is 0, the average new cases per million per week is 8.9983, and every 1 increase in search volume will lead to a 0.3945 increase in average new cases per million per week. 
+# this linear model is limited to only suggesting a prediction based on the linear changes of the data, without taking into consideration its seasonality as well as whether its cyclical or not. 
+```
+
+<p style="color:blue">
+(Intercept) When the seach volume is 0, the average new cases per million people for the week is 4.2244.
+</p>
+
+<p style="color:blue">
+(search_vol) Every 1 increase in search volume of words related to Covid 19, namely the terms "Covid", "Covid-19", or "Coronavirus Disease 2019" will lead to a 0.5265 increase in average new cases per million per week. 
+<p>
+
+<p style="color:blue">
+(Comments on goodness of fit) The search volume is statistically significant, which suggests that we have sufficient evidence to reject the null hypothesis and accept that search volume has an effect on smoothed new cases per million people in Singapore.
+<p>
+
+<p style="color:blue">
+When the seach volume is 0, the average new cases per million people for the week is 4.2244, and every 1% increase in search volume of terms "Covid", "Covid-19", or "Coronavirus Disease 2019" will lead to a 0.5265 increase in average new cases per million per week. At the same time, the search volume is statistically significant, which suggests that we have sufficient evidence to reject the null hypothesis and accept that search volume has an effect on smoothed new cases per million people in Singapore.
+<p> 
+
+<p style="color:red">**END: YOUR ANSWER**</p>
+
+
+
+### Q2e)
+
+[1 mark for submitting a html.]
+
+
+
+
+******** ----------
+
+
+
