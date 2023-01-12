@@ -1,0 +1,35 @@
+---
+title: "BT2103_A2_A0236437B_LoZhiHao"
+author: "Lo Zhi Hao"
+date: "2022-10-19"
+output: html_document
+---
+## Setup 
+
+```{r setup, results = FALSE}
+## install.packages("lpSolve")
+## install.packages("lpSolveAPI")
+## install.packages("linprog")
+library("lpSolve")
+library("lpSolveAPI")
+library("linprog")
+```
+
+## Question 2c
+
+```{r 2c}
+## primal solution
+
+## max Z = 2x1 +7x2 +4x3
+## s.t.
+## x1 +2x2 +x3 ≤ 10
+## 3x1 +3x2 +2x3 ≤ 10
+## x1;x2;x3 ≥ 0
+
+cvec <- c(2,7,4)
+bvec <- c(10, 10)
+Amat <- rbind(c(1, 2, 1), c(3, 3, 2))
+res <- solveLP(cvec, bvec, Amat, const.dir = c("<=", "<="), maximum = TRUE)
+print(res)
+```
+As C^t x^hat = B^t y^hat = 23.33, this suggests that both x^hat and y^hat are optimal for the primal problem and dual problem respectively. Hence, we can conclude that conditions for Strong Duality theorem holds at the solution computed by R.

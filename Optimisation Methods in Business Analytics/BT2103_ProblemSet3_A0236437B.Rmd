@@ -1,0 +1,221 @@
+---
+title: "BT2103_ProblemSet3_A0236437B"
+author: "Lo Zhi Hao"
+date: "2022-09-04"
+output: html_document
+---
+
+```{r setup}
+library(dplyr)
+library(readr)
+library(linprog)
+```
+
+# BT2103 Tutorial # 3, September 7, 2022
+
+The dataset for this tutorial is a subset of the Credit Approval Data from UCI Machine
+Learning Repository:
+
+[link](https://archive.ics.uci.edu/ml/datasets/credit+approval)
+
+Only two attributes (3 and 15) and a subset of the samples will be used in this exercise. The
+two continuous attributes are:
+
+• x1: debt (original attribute 3)
+
+• x2: income (original atrribute 15)
+
+The two classes in the data (attribute 16) have been labeled as:
+
+• Class 0: credit denied (original value ”-”)
+
+• Class 1: credit approved (original value ”+”)
+
+1. Download the dataset ”crx-subset.txt” and the file ”LPinMPS.txt” from Luminus Tutorial folder.
+
+```{r 1}
+## test
+
+crx_data <- read.delim("crx-subset.txt", header = FALSE, dec = ".")
+summary(crx_data)
+head(crx_data)
+
+LP_data <- read.delim("LPinMPS.txt", header = FALSE, sep = "\t", dec = ".")
+summary(LP_data)
+head(LP_data)
+```
+
+2. We are finding a linear decision boundary to separate the Class 0 samples from the
+Class 1 samples by solving the LP:
+
+max α−β
+
+subject to:
+
+w1x1 +w2x2 ≥ α for all approved samples Class 1
+
+w1x1 +w2x2 ≤ β for all denied samples Class 0
+
+w2 = 1
+
+The linear programming problem with the relavant data in the file crx-subset.txt has
+been formatted as an MPS file. MPS file format is useful when the linear program
+is sparse: it has many zero coefficients in the cost vector, or rhs vector, or in the
+constraint matrix. More information about the MPS file can be found in
+
+• [link](https://rdrr.io/cran/linprog/man/readMps.html)
+
+• [link](https://cran.r-project.org/web/packages/linprog/linprog.pdf)
+
+• [link](http://web.mit.edu/lpsolve_v5520/doc/mps-format.html)
+
+Solve the linear program presented in LPinMPS.txt by installing and loading the
+linprog package and reading the MPS input data file LPinMPS.txt:
+
+lp <- readMps("LPinMPS.txt",solve=TRUE,maximum=TRUE)
+
+1
+What are the optimal values for w1,w2,α and β?
+
+```{r q2}
+## solving linear programming problem 
+lp <- readMps("LPinMPS.txt",solve=TRUE,maximum=TRUE)
+summary(lp)
+head(lp)
+
+## Optimum values for w1 is 8.97135, w2 = 1, BETA = 594.63293, ALPHA = 308.97135
+```
+
+3. What is the purpose of having the constraint
+
+w2 = 1
+
+in the LP formulation? You may answer this question by
+
+• removing the constraints w2 ≥ 1 and −w2 ≥ −1 from the file LPinMPS.txt,
+
+• saving the file to LPinMPS1.txt,
+
+• re-solving the LP by calling readMps again.
+
+```{r q3}
+## using from file LPinMPS1_q3.txt
+
+lp <- readMps("LPinMPS_q3.txt", solve = TRUE, maximum = TRUE)
+summary(lp)
+head(lp)
+
+## w1, w2, ALPHA, BETA are all 0 
+```
+
+4. Plot the data points in crx-subset.txt and the following decision boundaries:
+
+w1x1 +w2x2 = θ
+
+for three values of θ = β,(α+β)/2 and α.
+
+```{r q4}
+## using table to store data "crx_table"
+crx_table <- read.table("crx-subset.txt", header = FALSE)
+crx_v1 <- crx_table$V1
+crx_v2 <- crx_table$V2
+crx_v3 <- crx_table$V3
+head(select(crx_table, -"V3"))
+crx_table_w1w2 <- select(crx_table, -"V3")
+plot(crx_table_w1w2, ylim = c(0, 1000), xlim = c(0, 80), xlab = "Weight 1", ylab = "Weight 2", col = ifelse(crx_table$V3 == 0, "red", "blue"), pch = ifelse(crx_table$V3, 15, 16))
+
+## θ = β,(α+β)/2 and α
+intercept1_beta <- 594.63293
+intercept2_alphabeta <- (308.97135 + 594.63293) / 2
+intercept3_alpha <- 308.97135	
+slope_line <- -8.97135	
+abline(intercept1_beta, slope_line, col = "green")
+abline(intercept2_alphabeta, slope_line, lty = 3)
+abline(intercept3_alpha, slope_line, col = "orange")
+```
+
+5. The decision rule is as follows:
+
+If w1x1 +w2x2 < θ, predict Class 0 (negative),
+else predict Class 1 (positive)
+Compute the false positive rate (FPR) and true positive rate (TPR) for each of the 3
+threshold values θ = β+10−4
+,(α+β)/2 and α−10−4
+.
+
+```{r q5}
+## use a for loop to loop through the values in crx_table then produce results accordingly 
+
+alpha	<- 308.971348	
+beta <-	594.632926
+w1 <-	8.971348
+w2 <- 1
+
+x <- crx_v1 
+y <- crx_v2 
+z <- crx_v3
+n <- length(x)
+
+delta = 1e-04 # is added/subtracted to avoid samples falling exactly on the hyperplanes
+vtresh <- c(alpha-delta, (alpha + beta)/2, beta+delta)
+ypred <- w1*x + w2*y
+TPRATE <- 0
+FPRATE <- 0
+j <- 1
+
+ while (j <= 3) {
+i <- 1
+tn <- 0
+fn <- 0
+tp <- 0
+fp <- 0
+tpr <- 0
+fpr <- 0
+while (i <= n) {
+thresh <- vtresh[j]
+if (ypred[i] < thresh && z[i] == 0) { tn <- tn + 1}
+else if (ypred[i] < thresh && z[i] == 1) { fn <- fn + 1}
+else if (ypred[i] >= thresh && z[i] == 1) { tp <- tp +1}
+else {fp <- fp + 1}
+i <- i + 1}
+cat("Threshold = " ,thresh, " TN FN TP FP ",tn,fn,tp,fp,"\n")
+j1 <- 5 - j
+tpr <- tp/(tp + fn)
+fpr <- fp/(tn + fp)
+FPRATE[j1] <- fpr
+TPRATE[j1] <- tpr
+cat("Threshold = " ,thresh, " TPR FPR ",tpr,fpr,"\n\n")
+j <- j + 1
+ }
+
+```
+
+6. Plot the ROC curve and compute the area under this curve.
+
+```{r q6}
+TPRATE[1] = 0
+FPRATE[1] = 0
+TPRATE[5] = 1
+FPRATE[5] = 1
+area = 0
+
+i <- 2
+while (i <= 5)
+{
+b1 <- FPRATE[i]
+b2 <- FPRATE[i-1]
+h1 <- TPRATE[i]
+h2 <- TPRATE[i-1]
+area <- area + 0.5*(b1-b2)*(h1 + h2)
+i <- i + 1
+}
+cat("Area under ROC curve = " ,area,"\n")
+```
+
+7. What will be the next step of the MSM (Multisurface Method)?
+
+
+```{r q7}
+## Next step is to solve a subset of the original thing, 
+## which is the part between alpha and beta lines. 
+```

@@ -1,0 +1,310 @@
+---
+title: "BT2103 Tutorial 4 A0236437B"
+author: "Lo Zhi Hao"
+date: "2022-09-13"
+output: html_document
+---
+```{r setup}
+library(dplyr)
+library(readr)
+library(linprog)
+```
+
+# BT2103 Tutorial # 4, September 13, 2022
+
+```{r 1a}
+## read data
+
+auto_mpg <- read.table("auto-mpg.txt", header = FALSE, dec = ".")
+summary(auto_mpg)
+head(auto_mpg)
+
+```
+
+```{r 1b, c, d, e}
+# conversion and preparing of data 
+names(auto_mpg) <- c("mpg","cylinders","displacement","horsepower","weight",
+"acceleration","model","origin","car_name")
+
+auto_mpg$cylinders <- as.double(auto_mpg$cylinders)
+auto_mpg$origin <- as.factor(auto_mpg$origin)
+auto_mpg_processedData <- auto_mpg %>% mutate(model = model - 70)
+
+summary(auto_mpg_processedData)
+head(auto_mpg_processedData)
+```
+
+```{r 1f}
+# splitting the data 
+
+set.seed(111)
+n = length(auto_mpg_processedData$mpg)
+index <- 1:nrow(auto_mpg_processedData)
+testindex <- sample(index, trunc(n)/3)
+test.data <- auto_mpg_processedData[testindex,]
+train.data <- auto_mpg_processedData[-testindex,]
+
+test.data
+train.data
+
+```
+
+```{r 2a}
+## install the required packages 
+
+#install.packages("Hmisc")
+#install.packages("corrplot")
+library(Hmisc)
+library(corrplot)
+```
+
+```{r 2b, c, d}
+## checking correlation
+
+data <- train.data
+
+df <- data.frame(data$cylinders, data$displacement, data$horsepower, data$weight, data$acceleration, data$model, data$mpg)
+df <- as.matrix(df_a1a6)
+df_mpg <- data.frame(data$mpg)
+
+rcorr(df)
+corrplot(cor(df), method = "ellipse")
+
+## Seems like cylinders, displacement, horsepower and weight has negative correlation to mpg of the car
+```
+
+```{r, 3a, b, c}
+## multiple linear regression for the model
+
+lm.data <- lm(mpg ~ cylinders + displacement + horsepower + weight + acceleration + model + origin, data = data)
+summary(lm.data)
+
+mean_y <- mean(data$mpg)
+
+## lm model 
+## mpg = 38.2947413 - 0.3978078 * cylinders + 0.0135906 * displacement - 0.0154981 * horsepower - 0.0068708 * weight + 0.1443631 * acceleration + 0.7655669 * model
+
+data <- data %>% mutate(origin_value = ifelse(origin == 1, 0, ifelse(origin == 2, 2.3078078, 2.7015289))) %>% mutate(lm.value = 38.2947413 - 0.3978078 * cylinders + 0.0135906 * displacement - 0.0154981 * horsepower - 0.0068708 * weight + 0.1443631 * acceleration + 0.7655669 * model + origin_value)
+head(data)
+
+i <- length(mpg.data)
+mpg.data <- data$mpg
+lm.data <- data$lm.value
+SSE <- 0
+MSS <- 0
+TSS <- 0
+
+for (index in range(i)) {
+  y <- mpg.data[index]
+  y_hat <- lm.data[index]
+  y_mean <- mean_y
+  
+  SSE <- SSE + (y - y_hat)**2
+  MSS <- MSS + (y_hat - y_mean)**2
+  TSS <- TSS + (y - y_mean)**2
+}
+
+R_sq <- MSS / TSS
+
+data.frame(SSE = SSE, MSS = MSS, TSS = TSS, R_square = R_sq, adjusted_R_square = 0.8143)
+
+```
+
+```{r 3d, e}
+## using on test dataset
+
+test <- test.data
+
+test <- test %>% mutate(origin_value = ifelse(origin == 1, 0, ifelse(origin == 2, 2.3078078, 2.7015289))) %>% mutate(lm.value = 38.2947413 - 0.3978078 * cylinders + 0.0135906 * displacement - 0.0154981 * horsepower - 0.0068708 * weight + 0.1443631 * acceleration + 0.7655669 * model + origin_value)
+head(test)
+
+# data.frame(test$mpg, test$lm.value)
+
+mpg.test <- test$mpg
+lm.test <- test$lm.value
+sse <- 0
+mss <- 0
+tss <- 0
+i <- length(mpg.test)
+
+for (index in range(i)) {
+  y <- mpg.test[index]
+  y_hat <- lm.test[index]
+  y_mean <- mean_y
+  
+  sse <- sse + (y - y_hat)**2
+  mss <- mss + (y_hat - y_mean)**2
+  tss <- tss + (y - y_mean)**2
+}
+
+r_sq <- mss / tss
+
+data.frame(SSE = sse, MSS = mss, TSS = tss, R_square = r_sq, adjusted_R_square = 0.8018)
+
+## (e) weight and model are significantly contributing to the regression model
+```
+
+```{r 3f, g, h}
+## creating model with less independent variables 
+
+lm.data_v2 <- lm(mpg ~ weight + model + origin, data = data)
+summary(lm.data_v2)
+
+## redo on data and test data
+
+## on data set
+
+mean_y <- mean(data$mpg)
+
+data <- data %>% mutate(lm.value_v2 = 38.2947413 - 0.0068708 * weight + 0.7655669 * model + origin_value)
+## head(data)
+
+i <- length(mpg.data)
+mpg.data <- data$mpg
+lm.data <- data$lm.value_v2
+SSE <- 0
+MSS <- 0
+TSS <- 0
+
+for (index in range(i)) {
+  y <- mpg.data[index]
+  y_hat <- lm.data[index]
+  y_mean <- mean_y
+  
+  SSE <- SSE + (y - y_hat)**2
+  MSS <- MSS + (y_hat - y_mean)**2
+  TSS <- TSS + (y - y_mean)**2
+}
+
+R_sq <- MSS / TSS
+
+data.frame(SSE = SSE, MSS = MSS, TSS = TSS, R_square = R_sq, adjusted_R_square = 0.8018)
+
+## on test set
+
+test <- test.data
+
+test <- test %>% mutate(origin_value = ifelse(origin == 1, 0, ifelse(origin == 2, 2.3078078, 2.7015289))) %>% mutate(lm.value_v2 = 38.2947413 - 0.0068708 * weight + 0.7655669 * model + origin_value)
+
+# data.frame(test$mpg, test$lm.value_v2)
+
+mpg.test <- test$mpg
+lm.test <- test$lm.value_v2
+sse <- 0
+mss <- 0
+tss <- 0
+i <- length(mpg.test)
+
+for (index in range(i)) {
+  y <- mpg.test[index]
+  y_hat <- lm.test[index]
+  y_mean <- mean_y
+  
+  sse <- sse + (y - y_hat)**2
+  mss <- mss + (y_hat - y_mean)**2
+  tss <- tss + (y - y_mean)**2
+}
+
+r_sq <- mss / tss
+
+data.frame(SSE = sse, MSS = mss, TSS = tss, R_square = r_sq, adjusted_R_square = 0.8018)
+
+## Hence weight model and origin are contributing factors for the lm model, 
+## one unit + in weight leads to a -0.006143 in mpg, one yr increase in yr of model leads to 0.803811 increase in mpg and europe and japan cars lead to 1.610840 and  1.721381 increase in mpg respectively. 
+```
+
+```{r 4a, b, c}
+# install.packages("leaps")
+library(leaps)
+
+## running best model selection 
+
+## with 1 predictor
+reg1 <- regsubsets(mpg~., data = auto_mpg_processedData, nbest = 1, nvmax = 1,  method="backward")
+res.sum1 <- summary(reg1)
+summary(reg1)
+data.frame(
+  Adj.R2 = which.max(res.sum1$adjr2),
+  CP = which.min(res.sum1$cp),
+  BIC = which.min(res.sum1$bic)
+)
+
+plot(reg1, main = "REG1", scale = "r2")
+
+## with 2 predictors 
+reg2 <- regsubsets(mpg~., data = auto_mpg_processedData, nbest = 2, nvmax = 2, method="backward")
+res.sum2 <- summary(reg2)
+summary(reg2)
+data.frame(
+  Adj.R2 = which.max(res.sum2$adjr2),
+  CP = which.min(res.sum2$cp),
+  BIC = which.min(res.sum2$bic)
+)
+
+plot(reg2, main = "REG2", scale = "r2")
+
+## with 7 predictors
+reg3 <- regsubsets(mpg~., data = auto_mpg_processedData, nvmax = 7, nbest = 7, method="backward")
+res.sum3 <- summary(reg3)
+summary(reg3)
+data.frame(
+  Adj.R2 = which.max(res.sum3$adjr2),
+  CP = which.min(res.sum3$cp),
+  BIC = which.min(res.sum3$bic)
+)
+
+plot(reg3, main = "REG3", scale = "r2")
+
+```
+
+```{r 4d, e}
+## with 1 predictor
+reg1 <- regsubsets(mpg~., data = auto_mpg_processedData, nbest = 1, nvmax = 1,  method="forward")
+res.sum1 <- summary(reg1)
+names(res.sum1)
+data.frame(
+  Adj.R2 = which.max(res.sum1$adjr2),
+  CP = which.min(res.sum1$cp),
+  BIC = which.min(res.sum1$bic)
+)
+
+plot(reg1, main = "REG1", scale = "r2")
+
+## with 2 predictors 
+reg2 <- regsubsets(mpg~., data = auto_mpg_processedData, nbest = 2, nvmax = 2, method="forward")
+res.sum2 <- summary(reg2)
+summary(reg2)
+data.frame(
+  Adj.R2 = which.max(res.sum2$adjr2),
+  CP = which.min(res.sum2$cp),
+  BIC = which.min(res.sum2$bic)
+)
+
+plot(reg2, main = "REG2", scale = "r2")
+
+## with 7 predictors
+reg3 <- regsubsets(mpg~., data = auto_mpg_processedData, nvmax = 7, nbest = 7, method="forward")
+res.sum3 <- summary(reg3)
+summary(reg3)
+data.frame(
+  Adj.R2 = which.max(res.sum3$adjr2),
+  CP = which.min(res.sum3$cp),
+  BIC = which.min(res.sum3$bic)
+)
+
+plot(reg3, main = "REG3", scale = "r2")
+
+## (e) Yes? How do i even measure or compare this thing?
+```
+
+```{r 4f}
+## building the best 2 feature from the selection
+
+## Have no idea how to interpret 
+```
+
+```{r q5 summary}
+## (a) filter feature selection ~ the higher the correlation the more likely its going to contribute to significant difference in the dependent variable so would select high correlation independent variables
+## (b) wrapper feature selection ~ by removing insignificant variables from the regression we reduce the noise and can focus on a few variables that are contributing to the model, increases the accuracy of the model
+## (c)
+```

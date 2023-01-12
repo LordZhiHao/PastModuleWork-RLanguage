@@ -1,0 +1,136 @@
+---
+title: "BT2103 A1 A0236437B"
+author: "Lo Zhi Hao"
+date: "2022-09-14"
+output: html_document
+---
+For this assignment, you will experiment with the SVM classifier.
+1. Download and install R
+
+2. Install package e1071. 
+```{r 2}
+## install.packages("e1071")
+library(dplyr)
+library(e1071)
+```
+
+3. Download the Rice (Cammeo and Osmancik) Data Set (RiceDataset.txt) set from Luminus
+Assignment1 folder. 
+
+4. Load the data file RiceDataset.txt into R and call it rice.
+
+```{r 4}
+## download and load file 
+
+rice <- read.table("RiceDataset.txt", header = TRUE)
+head(rice)
+summary(rice)
+```
+
+5. Retype the following lines of R commands:
+
+```{r 5, echo = FALSE}
+## copy down the r commands as instructed 
+
+library(e1071)
+index <- 1:nrow(rice)
+set.seed(12345)
+testindex <- sample(index, trunc(length(index)/3))
+testset <- rice[testindex,]
+trainset <- rice[-testindex,]
+
+
+svm.model <- svm(as.factor(CLASS) ~ . , data = trainset,type="C-classification", kernel="linear")
+svm.model
+svm.model$SV
+svm.model$index
+
+
+results_train <- predict(svm.model,trainset[,-8])
+results_test <- predict(svm.model, testset[,-8] )
+table(pred=results_train,actual=trainset$CLASS)
+table(pred=results_test,actual=testset$CLASS)
+mean(results_train == trainset$CLASS)
+mean(results_test == testset$CLASS)
+
+
+svm.crossmodel <- svm(as.factor(CLASS) ~ . , data=rice, cross=10,type="C-classification",kernel="linear",cost=1)
+results_rice <- predict(svm.crossmodel,rice[,-8])
+table(pred=results_rice,actual=rice$CLASS)
+mean(results_rice == rice$CLASS)
+
+
+svm.weightedmodel <- svm(as.factor(CLASS) ~ . , data=rice, cross=10, type="C-classification",kernel="linear",cost=1, class.weights=c(Cammeo=0.9,Osmancik=0.1))
+results_rice <- predict(svm.weightedmodel,rice[,-8])
+table(pred=results_rice,actual=rice$CLASS)
+mean(results_rice == rice$CLASS)
+
+## weights improve after change(change to similar to real distribution)
+## changing kernels do not help
+## changing times of cross validation does not help
+## Changing to type `nu-classfication` classification improves the model 
+## Increasing cost (penalty on wrongly classified values) improves the model slightly
+
+```
+
+6. Deliverable: Upload a report as pdf file by the deadline into Luminus folder Assignment1-
+Submission. Include in the report your answers to the following questions:
+
+
+• What does each line of the R code above do? Explain any output that is produced by
+the R command.
+
+```{r line1 }
+
+## I have created code chunks according to the main functionality each of the chunks are dedicated to doing 
+
+## For the first chunk of R code, we are setting up the packages and classifying the existing data into training and test sets
+library(e1071) # opening the e1071 package
+index <- 1:nrow(rice) # Find the total number of rows and  create a vector with the number of rows in rice dataset
+set.seed(12345) # set seed to make sure the pseudorandom number generator in following lines always generates the same output and helps in debugging
+testindex <- sample(index, trunc(length(index)/3)) # takes a sample from the rice rows vectors that is 1/3 of the original size
+testset <- rice[testindex,] # creating a test dataset to prepare for testing of the SVM model 
+trainset <- rice[-testindex,] # creating a training dataset to prepare for the running of SVM model
+
+## Second chunk of code is about running and printing out the results from the SVM model
+svm.model <- svm(as.factor(CLASS) ~ . , data = trainset,type="C-classification", kernel="linear") # Running the SVM model using the svm function in R 
+svm.model # Calling a summary of the svm model, 
+svm.model$SV # printing out the resulting support vectors
+svm.model$index # printing out the index of the resulting support vectors in the data matrix
+
+## Utilising the svm model to predict and measure the accuracy of the model on test dataset
+results_train <- predict(svm.model,trainset[,-8]) # generating prediction results from training data by using the svm model 
+results_test <- predict(svm.model, testset[,-8]) # generating prediction results from test data by using the svm model
+table(pred=results_train,actual=trainset$CLASS) # creating a contingency table to represent the confusion matrix of the model in the training dataset
+table(pred=results_test,actual=testset$CLASS) # creating a contingency table to represent the confusion matrix of the model in the test dataset
+mean(results_train == trainset$CLASS) # getting the accuracy of estimations of predicted results in training dataset (true positive, true negative)
+mean(results_test == testset$CLASS) # getting the accuracy of estimations of predicted results in test dataset (true positive, true negative)
+
+## Rerun the model using addtional cross validation and penalising parameters 
+svm.crossmodel <- svm(as.factor(CLASS) ~ . , data=rice, cross=10,type="C-classification",kernel="linear",cost=1) # Rerun the svm model with more arguments (cross for k-times cross validation and cost for penalising constraint violations)
+results_rice <- predict(svm.crossmodel,rice[,-8]) # generating prediction results from the entire rice dataset by using the svm model
+table(pred=results_rice,actual=rice$CLASS) # creating a contingency table to represent the confusion matrix of the model in the test dataset
+mean(results_rice == rice$CLASS) # getting the accuracy of estimations of predicted results in rice dataset (true positive, true negative)
+
+## Rerun the model using additional weight parameter
+svm.weightedmodel <- svm(as.factor(CLASS) ~ . , data=rice, cross=10, type="C-classification",kernel="linear",cost=1, class.weights=c(Cammeo=0.9,Osmancik=0.1)) # Rerun the svm model with more arguments (class.weight to take into account the assymetrical nature of cammeo and osmancik class size)
+results_rice <- predict(svm.weightedmodel,rice[,-8]) # generating prediction results from the entire rice dataset by using the svm model
+table(pred=results_rice,actual=rice$CLASS) # creating a contingency table to represent the confusion matrix of the model in the test dataset
+mean(results_rice == rice$CLASS) # getting the accuracy of estimations of predicted results in rice dataset (true positive, true negative)
+
+## cl <- rice %>% group_by(CLASS) %>% count()
+## cl
+```
+
+• Provide some suggestions as how we can possibly obtain better results while using this
+SVM package on the Rice data set.
+
+Some possible changes to make to the SVM model in order to achieve better results includes:
+
+1. increase the amount of penalty on incorrectly classified data by increasing the cost to better take into account incorrect data classification
+
+2. using different kernels to take into account different kinds of possible mathematical relationships other than linear relationships
+
+3. use different type of classification such as the `nu-classification` method 
+
+4. Apply different weightage for the two rice classes (actual data is 1630 : 2180)

@@ -1,0 +1,298 @@
+---
+title: "BT2103 Tutorial 5 A0236437B"
+author: "Lo Zhi Hao"
+date: "2022-09-30"
+output: html_document
+---
+## BT2103 Tutorial # 5, September 28, 2022
+
+
+1. The dataset for this tutorial is the Congressional Voting Records data from UCI Machine
+Learning Repository:
+
+https://archive.ics.uci.edu/ml/datasets/congressional+voting+records
+
+It includes the voting records of members of the US Congress in 1984. There are 2 classes
+representing party affiliation in the data (Column 1):
+
+• democrat, assign Class 0,
+
+• republican, assign Class 1.
+
+The attributes in the data are:
+
+Attr. Col. Votes on: Attr. Col. Votes on:
+
+A1 2 handicapped-infants A2 3 water-project-cost-sharing
+
+A3 4 adoption-of-the-budget-resolution A4 5 physician-fee-freeze
+
+A5 6 el-salvador-aid A6 7 religious-groups-in-schools
+
+A7 8 anti-satellite-test-ban A8 9 aid-to-nicaraguan-contras
+
+A9 10 mx-missile A10 11 immigration
+
+A11 12 synfuels-corporation-cutback A12 13 education-spending
+
+A13 14 superfund-right-to-sue A14 15 crime
+
+A15 16 duty-free-exports A16 17 export-administration-act-south-africa
+
+The attribute values represent voting records. They are discrete with 3 possible values:
+
+• yes: voted ’yes’ on the issue
+
+• no: voted ’no’ on the issue
+
+• ?: did not vote/missing value
+
+Download the dataset "house-vote-84.data" from the Tutorial folder. Which of the 16
+attributes are most useful in predicting the class labels? As the attributes are discrete
+and categorical, we will use Chi-square statistic to identify important features. You
+may visit
+
+http://www.r-tutor.com/elementary-statistics/goodness-fit/chi-squared-test-independence
+
+to read more about Chi-square test of independence using the chisq.test function. This
+function returns the following results:
+
+• statistic: the value the chi-squared test statistic.
+
+• parameter: the degrees of freedom
+
+• p.value: the p-value of the test
+
+• observed: the observed count
+
+• expected: the expected count
+
+2. Read in the dataset and check the distribution of the attributes as categorical data:
+
+```{r 2}
+vote <- read.table("house-votes-84.data",header=FALSE,sep=',')
+
+vars <- c("infant","water","budget","feefreeze","elsalvador","religious",
+"test-ban","contras","missiles","immigration","fuel","education",
+"superfund", "crime", "dutyfree", "SouthAfrica")
+
+names(vote) <- c("party",vars)
+
+for (I in 1:17) {
+x <- as.factor(vote[,I])
+cat ("\n Attribute = ",I, names(vote)[I],"\n")
+print(summary(x)) }
+
+```
+
+
+3. For all attributes A1, A2, ..., A16, compute the Chi-square statistic for testing the
+hypothesis:
+
+H0: The class label (party affiliation) and voting records are independent.
+
+Ha: The class label (party affiliation) and voting records are not independent.
+
+For which attributes would you reject H0 in favor of Ha? Set level of significance, α = 0:05
+for the test.
+
+```{r 3}
+chistat <- matrix(0, 16, 2)
+col <- ncol(vote) - 1
+class <- as.factor(vote[,1])
+
+for (I in 1:col) {
+  x <- as.factor(vote[, I + 1])
+  tbl <- table(x, class)
+  cat("\n Attribute = ", I, vars[I], "\n")
+  print(tbl)
+  chi2res <- chisq.test(tbl)
+  print(chi2res)
+  chistat[I, 1] <- chi2res$statistic
+  chistat[I, 2] <- chi2res$p.value
+}
+
+df <- data.frame(chistat[, 1:2], vars)
+
+names(df) <- c("chi2 stat", "p-value", "issue")
+
+df
+```
+
+4. Rank the attributes according to their chi-square statistic values. If you have to do
+feature selection and select only 5 attributes, which attributes would you remove from
+the data?
+
+```{r 4}
+df[order(df[,1]), ]
+```
+
+5. How easy is it to predict party affiliation?
+
+(a) We will build logistic regression models to answer this question. Information about
+logistic regression with R:
+
+https://www.statmethods.net/advstats/glm.html
+
+Let’s divide the data for training and testing:
+
+```{r 5a}
+n <- length(vote$party)
+nvar <- ncol(vote) - 1
+set.seed(123)
+index <- 1:nrow(vote)
+trainindex <- sample(index, trunc(n)/2)
+train.data <-vote[trainindex,]
+test.data <- vote[-trainindex,]
+ntrain <- length(train.data$party)
+ntest <- length(test.data$party)
+
+# Class 0 = democrat, Class 1 = republican
+
+train.class <- ifelse(train.data$party == "democrat",0,1)
+test.class <- ifelse(test.data$party == "democrat",0,1)
+table(train.class)
+table(test.class)
+```
+
+(b) Build a logistic regression model using the training data and just the top 2 attributes
+according to their Chi2 statistic.
+
+```{r 5b}
+model.top2vars <- glm(train.class ~ feefreeze + budget, data = train.data[,-1], family = binomial)
+
+summary(model.top2vars)
+```
+
+(c) Build a second logistic regression model using the training data and the bottom 2
+attributes according to their Chi2 statistic.
+
+```{r 5c}
+model.last2vars <- glm(train.class ~ water + immigration, data = train.data[,-1], family = binomial)
+
+summary(model.last2vars)
+```
+
+(d) Compare the performance of the models by computing the area under the ROC
+curve of both models on the training and test datasets. The following R package
+plots the ROC curve and computes the AUC:
+
+https://cran.r-project.org/web/packages/ROCit/ROCit.pdf
+
+```{r 5d}
+par(mfrow = c(2, 2))
+
+
+## trying on training set
+train.predtop2 <- predict(model.top2vars, data = train.data[, -1], type = "response")
+
+## install.packages('ROCit')
+library(ROCit)
+
+traintop2 <- rocit(train.predtop2, train.class)
+
+traintop2
+plot(traintop2)
+
+## trying on test set
+test.predtop2 <- predict(model.top2vars, newdata = test.data[, -1], type = "response")
+
+testtop2 <- rocit(test.predtop2, test.class)
+
+testtop2
+plot(testtop2)
+
+## trying on the bottom two indicator 
+
+## trying on training data
+train.predbot2 <- predict(model.last2vars, data = train.data[, -1], type = "response")
+
+trainbot2 <- rocit(train.predbot2, train.class)
+trainbot2
+plot(trainbot2)
+
+## trying on test data 
+test.predbot2 <- predict(model.last2vars, newdata = test.data[, -1], type = "response")
+
+testbot2 <- rocit(test.predbot2, test.class)
+testbot2
+plot(testbot2)
+```
+
+(e) To check the accuracy of the models, download, install and load the package InformationValue:
+
+https://cran.r-project.org/web/packages/InformationValue/InformationValue.pdf
+
+Use the function optimalCutoff with option (optimiseFor = "misclasserror") to find
+the best cutoff. Report the accuracy of both models using their respective optimal
+cutoff on the training and test datasets.
+
+```{r 5e}
+## install.packages('InformationValue')
+library(InformationValue)
+
+## trying for top 2 variables as shown in the glm
+ksplot_op <- ksplot(traintop2)
+## Aim is to maximise the maximum distance between the two lines (ksstat)
+## The wider the better
+
+ksplot_op$method
+ksplot_op$Cutoff
+ksplot_op$`F(c)`
+ksplot_op$`G(c)`
+ksplot_op$`KS stat`
+ksplot_op$`KS Cutoff`
+
+optcut <- optimalCutoff(train.class, train.predtop2, optimiseFor = "misclasserror")
+optcut
+
+## trying on training set
+train.binpred <- ifelse(train.predtop2 < optcut, 0, 1)
+table(train.class, train.binpred)
+mean(train.class == train.binpred)
+
+## trying on testing set
+test.binpred <- ifelse(test.predtop2 < optcut, 0, 1)
+table(test.class, test.binpred)
+mean(test.class == test.binpred)
+
+## trying for bottom 2 variables as shown in the glm
+ksplot_last <- ksplot(trainbot2)
+
+ksplot_op$method
+ksplot_op$Cutoff
+ksplot_op$`F(c)`
+ksplot_op$`G(c)`
+ksplot_op$`KS stat`
+ksplot_op$`KS Cutoff`
+
+optcut2 <- optimalCutoff(train.class, train.predbot2, optimiseFor = "misclasserror")
+optcut2
+
+## trying on training set
+train.binpred2 <- ifelse(train.predbot2 < optcut2, 0, 1)
+table(train.class, train.binpred2)
+mean(train.class == train.binpred2)
+
+## trying on test set
+test.binpred2 <- ifelse(test.predbot2 < optcut2, 0, 1)
+table(test.class, test.binpred2)
+mean(test.class == test.binpred2)
+```
+
+(f) Summarize your findings.
+
+```{r 5f}
+## creating a data frame for top 2 
+
+df1 <- data.frame(AUC = c(0.9783, 0.9875), Accuracy = c(0.9493088, 0.9633028))
+rownames(df1) <- c("Train Set", "Test Set")
+df1
+
+## creating a data frame for bot 2
+
+df2 <- data.frame(AUC = c(0.5302, 0.4363), Accuracy = c(0.6451613, 0.5779817))
+rownames(df2) <- c("Train Set", "Test Set")
+df2
+```
+
