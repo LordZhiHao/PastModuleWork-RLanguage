@@ -1,0 +1,324 @@
+---
+title: "BT2101 GA2 Group 67 Submission"
+author: "Lo Zhi Hao"
+date: "2022-10-07"
+output: html_document
+---
+## 1 Econometric Analysis using R
+
+
+**Please use the jtrain2 and jtrain3 datasets from the Wooldridge package in R to answer this question. The dataset jtrain2 is the outcome of a job training experiment, where training status was randomlyassigned. The file jtrain3 contains observational data, where individuals largely determine if they wouldlike to participate in job training. These two datasets cover the same time period. Please carefully read the dataset documents before your answer these questions.**
+
+```{r Set up the environment, results = FALSE, warning = FALSE, , message=FALSE}
+## Setting up the environment for further studies 
+
+## install.packages("wooldridge")
+## install.packages("dplyr")
+## install.packages("MASS")
+## install.packages("ggplot2")
+
+library(wooldridge)
+library(dplyr)
+library(MASS)
+library(knitr)
+library(corrplot)
+library(ggplot2)
+
+## documentation for MASS is at https://cran.r-project.org/web/packages/MASS/MASS.pdf
+
+## Downloading the dataset
+
+data('jtrain2')
+data('jtrain3')
+## ?jtrain2
+## ?jtrain3
+```
+
+```{r}
+## for jtrain2 
+str(jtrain2)
+head(jtrain2)
+
+## for jtrain3 
+str(jtrain3)
+head(jtrain3)
+```
+
+**(a) Use jtrain2 and jtrain3 to plot the variable re78 (i.e., DV) against train (i.e., IV) and compare their distributions and slope (i.e., β) of the simple regression lines. (Hint: to visualize the regression line) Explain potential reasons for the different slopes.**
+
+```{r 1a}
+## for jtrain2
+
+ggplot(jtrain2, aes(x = train, y = re78)) +
+    geom_point(aes(colour = factor(train))) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = paste("Jtrain2 Training vs Real Earnings for 1978")
+)
+
+## for jtrain3
+
+ggplot(jtrain3, aes(x = train, y = re78)) +
+    geom_point(aes(colour = factor(train))) +
+  geom_smooth(method = "lm", se = FALSE) +
+    labs(
+    title = paste("Jtrain3 Training vs Real Earnings for 1978")
+)
+```
+```{r 1a_part2}
+## searching for potential underlying problems 
+
+par(mfrow = c(1, 2))
+
+## Key statistics for JTRAIN2
+
+df1 <- data.frame(mean(jtrain2$re78), sd(jtrain2$re78))
+colnames(df1) <- c("Mean for jtrain2 Recorded Earnings in 1978", "SD for jtrain2 Recorded Earnings in 1978")
+kable(df1)
+
+## Key statistics for JTRAIN3
+
+df2 <- data.frame(mean(jtrain3$re78), sd(jtrain3$re78))
+colnames(df2) <- c("Mean for jtrain3 Recorded Earnings in 1978", "SD for jtrain3 Recorded Earnings in 1978")
+kable(df2)
+
+## plotting out the distribution
+
+data1 <- data.frame(values = c(jtrain2$re78, jtrain3$re78),
+                   group = c(rep("Jtrain2", nrow(jtrain2)), 
+                             rep("Jtrain3", nrow(jtrain3))))
+
+ggplot(data1, aes(x = values, fill = group)) +
+    geom_histogram(position = "identity", alpha = 0.2, bins = 50) +
+    labs(
+    title = paste("Distribution for jtrain2 re78 vs Distribution for jtrain3 re78"), x = "re78 (in 1000s)"
+)
+
+```
+
+```{r 1a_part3}
+## Proportion of training and non-training individuals
+
+## JTRAIN2
+train.pop1 <- jtrain2 %>% count(train)
+pie(train.pop1$n, labels = c("Untrained 260 58.43%", "Trained 185 41.57%"), main = "Proportion who Undergone Training in Jtrain2")
+
+## JTRAIN3
+
+train.pop2 <- jtrain3 %>% count(train)
+pie(train.pop2$n, labels = c("Untrained 2490 93.1%", "Trained 185 6.9%"), main = "Proportion who Undergone Training in Jtrain3")
+
+```
+
+<span style="color: blue;"> From the scatterplot that was plotted above, as well as the regression line that was plotted, we can notice a positive slope for Jtrain2 (slope = 1.7943) and a negative slope for Jtrain3 (slope = -15.2048). </span>
+
+<span style="color: blue;"> By classifying the data according to whether the employee undergone training or not, we can also notice that the proportion of employees undergone training in Jtrain2 is significantly higher than in Jtrain3 (43.57% of Jtrain2 employees undergone training while only 6.9% of Jtrain3 employees undergone training). </span>
+
+<span style="color: blue;"> Moreover, by plotting out the scatterplots and calculating the means for recorded earnings in each dataset, we can also notice that the mean earnings of Jtrain2 dataset is significantly lower than Jtrain3 (5.300765 (in thousands)) in Jtrain2 compared to 20.50238 (in thousands)) in Jtrain3. </span>
+
+<span style="color: blue;"> This might be because of the sample selection for both datasets being different from each other. For jtrain2, it is the outcome from a job training experiment, and hence the targeted employees in the sample  are  low  earners  and  targeted  to  receive  a  training. As such, it might not be an accurate representative of the entire population. Meanwhile, for jtrain3, it contains larger amount of data, and the proportion of men taken job training is also lower at 6.9%, which suggests it might represent a random sample from the population of men working in 1978.  </span>
+
+**(b) Using jtrain2, run a simple regression of re78 on train. Interpret your regression outputs.**
+
+```{r 1b}
+## running the regression
+
+linear.model <- lm(re78 ~ train, jtrain2)
+summary(linear.model)
+
+# linear.model2 <- lm(re78 ~ train, jtrain3)
+# summary(linear.model2)
+```
+
+<span style="color: blue;"> The relationship is as follows: </span>
+
+<span style="color: blue;"> `re78` = 4.5548 +  1.7943 x `train` </span>
+
+<span style="color: blue;"> Multiple R squared is 0.01782, and Adjusted R squared is 0.01561. </span>
+
+<span style="color: blue;"> If an employee is not assigned to job training, he is expected to earn an average of 4.5548 x 1000 = \$4554.8 in real earnings in 1978. If a person is in job training, the real earnings of him in 1978 is associated with a 1.7943 thousands (1794.3) increase (a nontrivial amount). Hence, after the employee had been assigned to job training, he is expected to earn an average of (4.5548 + 1.7943) x 1000 = \$6349.1 in real earnings in 1978. The two coefficients are statistically significant, which suggests that we can confidently conclude that these variables are statistically different from 0. </span>
+
+**(c) Using jtrain2, now adds variables re74, re75, educ, age, black, and hisp as control variables to the regression in question (b). Will the estimated effect of job training on re78 change much? Explain, that is, why or why not?**
+
+```{r 1c}
+## running new regression model
+
+linear.model2 <- lm(re78 ~ train + re74 + re75 + educ + age + black + hisp, jtrain2)
+summary(linear.model2)
+
+```
+
+<span style="color: blue;">After adding in all the control variables (re74, re75, educ, age, black, hist), the coefficient of train in the linear model reduces from 1.79 to 1.68. This is not a huge change from section (b) as estimated. </span>
+
+<span style="color: blue;"> This is because in order to be a randomised controlled experiment, the training programme has to be assigned randomly to employees without taking into account any of the other variables. As such, they should be roughly uncorrelated to the other independent variables. Thus, the estimated effect of adding other control variables into the regression is expected to be small, and it is proven by the results of the model shown. </span>
+
+**(d) Using jtrain3, following the same logic of comparison between univariate and multivariate linear regression ( i.e., question (b) & (c) ), will a multivariate regression give different results? Explain, that is, why or why not?**
+
+```{r 1d}
+# running same regression for jtrain3
+par(mfrow = c(1, 2))
+
+linear.model3 <- lm(re78 ~ train, jtrain3)
+summary(linear.model3)
+
+linear.model4 <- lm(re78 ~ train + re74 + re75 + educ + age + black + hisp, jtrain3)
+summary(linear.model4)
+
+## Proving and understanding the underlying concepts behind the coefficients
+
+jtrain3.trained <- jtrain3 %>% filter(train == 1)
+jtrain3.non_trained <- jtrain3 %>% filter(train == 0)
+
+df3 <- data.frame(mean(jtrain3.trained$re78), mean(jtrain3.non_trained$re78))
+colnames(df3) <- c("Mean for jtrain3 (Trained) Recorded Earnings in 1978", "Mean for jtrain3 (Non-Trained) Recorded Earnings in 1978")
+kable(df3)
+
+ggplot(jtrain3, aes(x = train, y = re78, colour = factor(train))) +
+    geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+    labs(
+    title = paste("Jtrain3 Training vs Real Earnings for 1978")
+)
+
+```
+
+<span style="color: blue;"> When we run the univariated linear regression model, if an employee is not assigned to job training, he is expected to earn an average of 21.5539 x 1000 = \$21, 554 in real earnings in 1978. After the employee had been assigned to job training, he is expected to earn an average of (21.5539 - 15.2048) x 1000 = \$6349.1 in real earnings in 1978. The two coefficients are statistically significant, which suggests that we can confidently conclude that these variables are statistically different from 0. </span>
+
+<span style="color: blue;"> Something to take note about is that the coefficient of job training is -15.2048, which is a huge negative coefficient. This is hard to believe, as it is counter intuition for employees who undergone job training to have decreased wages despite the increase in skills and abilities they gain from the training. Further analysis of the sample suggests that those who undergone job training are from a lower income group. This suggests that the job training for employees in this dataset is most likely not going to be randomly selected, but instead is choosen to join the job training on purpose. </span>
+
+<span style="color: blue;"> When we run the multivariated linear regression, if an employee is not assigned to job training, as well as holding other independent variables at 0 (0 for re74, re75, educ, age, black and hist), he is expected to earn an average of 1.64755 x 1000 = \$1,647.55 in real earnings in 1978. After the employee had been assigned to job training, he is expected to earn an average of (1.64755 + 0.21323) x 1000 = \$1,860.78 in real earnings in 1978. The two coefficients have large p-values, which suggests that we have insufficient statistical evidence to suggests that the coefficients are significantly different from 0. As such, the effect of training on the overall recorded earnings on 1978 is small, positive and statistically insignificant.</span>
+
+<span style="color: blue;"> Compared to the original univariated linear regression, the coefficient for train in the multivariated linear regression is more believable, as the small and insignificant statistics (0.213) is a more convincing representation of the effect on recorded earnings, as training provides employees with more value adding skills but will not change the recorded earnings significantly in a short period of time. </span>
+
+**(e) Define avgRe = (re74 + re75) / 2. Create a graph to compare the distribution of avgRe across jtrain2 and jtrain3. Do you agree that these data sets can represent the same populations in 1978? Explain. In addition, using at least two statistics except average, present your intuitive evidence (i.e., not a two-sample t-test) and analysis regarding this representativity issue.**
+
+```{r 1e}
+# mutating and creating a new column 
+
+jtrain2 <- jtrain2 %>% mutate(avgRe = (re74 + re75) / 2)
+# str(jtrain2)
+
+jtrain3 <- jtrain3 %>% mutate(avgRe = (re74 + re75) / 2)
+# str(jtrain3)
+
+## Creating the graph
+
+data <- data.frame(values = c(jtrain2$avgRe, jtrain3$avgRe),
+                   group = c(rep("Jtrain2", nrow(jtrain2)), 
+                             rep("Jtrain3", nrow(jtrain3))))
+
+ggplot(data, aes(x = values, fill = group)) +
+    geom_histogram(position = "identity", alpha = 0.2, bins = 50) +
+    labs(
+    title = paste("Jtrain2 Average Earnings vs Jtrain3 Average Earnings")
+)
+
+## Two statistics to represent the intuitive evidence
+
+## 1ST statistics - interquartile range
+
+summary(jtrain2$avgRe)
+summary(jtrain3$avgRe)
+
+IQR_jtrain2 <- "[0, 1.492]"
+IQR_jtrain3 <- "[8.829, 25.257]" 
+
+IQR <- data.frame(IQR_jtrain2, IQR_jtrain3)
+kable(IQR)
+
+ggplot(data, aes(x = group, y = values, fill = group)) + geom_boxplot()
+
+## 2nd statistics - median and sd of both datasets
+
+jtrain2.median <- median(jtrain2$avgRe)
+jtrain2.sd <- sd(jtrain2$avgRe)
+
+jtrain3.median <- median(jtrain3$avgRe)
+jtrain3.sd <- sd(jtrain3$avgRe)
+
+df7 <- data.frame(jtrain2.median, jtrain2.sd, jtrain3.median, jtrain3.sd)
+kable(df7)
+```
+
+<span style="color: blue;"> No, we do not agree that the two datasets represent the same population. This is mainly because of the major difference in distribution of data in the two datasets, as shown visually in the histogram graphed above. This is further proven by looking into the documentation for both jtrain2 and jtrain3, where jtrain2 is the outcome of a job training experiment where participants are low earners who are targeted to get training, while jtrain3 is the outcome of a random sample from the population of men working in 1978. </span>
+
+<span style="color: blue;"> In addition, by calculating the interquartile range for both jtrain2 and jtrain3 and creating a boxplot to represent the range in a visual way, we can see that the interquartile range for both datasets are significantly different from each other, with jtrain2 having an interquartile range way below that of jtrain3. This provides further evidence that the two datasets are not from the same population, as if the two datasets are from a same distribution, the majority of data for real earnings (data between the 25th and 75th percentile of the distribution) will not be as different as shown in the interquartile range and boxplot analysis. </span>
+
+<span style="color: blue;"> Similarly, by calculating the median and standard deviation for both jtrain2 and jtrain3, we realise that there is a significant difference between the median and standard deviation of both datasets. For example, the median and sd for jtrain2 are 0 and 3.900095 while median and sd for jtrain3 are 16.87315 and 13.29345. As such, this provides further evidence that the two datasets are not from the same population due to the large difference in median and standard deviation values. </span>
+
+**(f) Almost 96% of men in the data set jtrain2 have avgRe less than $10,000. Using only these men, run the regression below:**
+
+<center> **re78 on train, re74, re75, educ, age, black, hisp (1)** </center>
+
+**Please report the coefficient of train and its t-statistic. Is there any difference between the regression result of the full sample and that of this subsample of 96 % men? How to justify this difference, if any?**
+
+```{r 1f}
+## filter out men with avgRe less than $10, 000
+
+jtrain2.filtered <- jtrain2 %>% filter(avgRe <= 10)
+
+linear.model5 <- lm(re78 ~ train + re74 + re75 + educ + age + black + hisp, jtrain2.filtered)
+summary(linear.model5)
+
+df4 <- data.frame(nrow(jtrain2), nrow(jtrain2.filtered))
+kable(df4)
+```
+
+<span style="color: blue;"> The relationship is as follows: </span>
+
+<span style="color: blue;"> `re78` = 1.73691 +  1.58303 x `train` - 0.11676 x `re74`  + 0.17321 x `re75` + 0.35821 x `educ` + 0.044 x `age` - 2.38353 x `black` - 0.3694 x `hisp`</span>
+
+<span style="color: blue;"> For `train` in the model, the coefficient of `train` is 1.58303 and the t-statistics for `train` is 2.503. </span>
+
+<span style="color: blue;"> There is a difference between the coefficient (1.58303 compared to 1.68005 in original model) and t-statistics (2.503 compared to 2.663 in original model). This difference is expected, as we are dismissing the higher earners in the new jtrain2 model. </span>
+
+<span style="color: blue;"> As such, the lower coefficient for train is expected, as we have fewer observations in the new model, and the remaining observations are all slightly lower earners as the higher earners are filtered out. </span>
+
+<span style="color: blue;"> Meanwhile, despite the standard error remains similar (0.63245 compared to 0.63086 in original model), the t-statistics for train still decreases. This is due to the reduced number of extreme observations recorded in the data, as we removed the higher earners out from our dataset. As such, the remaining values will be closer to the mean of the real earnings, and according to the formula for t-statistics, t-statistics will be slightly lower than the original model. </span>
+
+**(g) Run the same regression above for both jtrain3 and jtrain2, also using only men with avgRe <= 10. Regarding the sub-sample regressions, will the coefficients of train be different across these two datasets? How to justify this difference, if any?**
+
+```{r 1g}
+## filter out men with avgRe less than $10, 000
+
+## running on jtrain2
+
+jtrain2.filtered <- jtrain2 %>% filter(avgRe <= 10)
+
+linear.model6 <- lm(re78 ~ train + re74 + re75 + educ + age + black + hisp, jtrain2.filtered)
+summary(linear.model6)
+
+## running on jtrain3
+
+jtrain3.filtered <- jtrain3 %>% filter(avgRe <= 10)
+
+linear.model7 <- lm(re78 ~ train + re74 + re75 + educ + age + black + hisp, jtrain3.filtered)
+summary(linear.model7)
+
+df5 <- data.frame(nrow(jtrain3), nrow(jtrain3.filtered))
+kable(df5)
+
+## showing distribution of average earnings for jtrain2 and jtrain3 after filtering 
+
+data <- data.frame(values = c(jtrain2.filtered$avgRe, jtrain3.filtered$avgRe),
+                   group = c(rep("Jtrain2 Filtered", nrow(jtrain2.filtered)), 
+                             rep("Jtrain3 Filtered", nrow(jtrain3.filtered))))
+
+ggplot(data, aes(x = values, fill = group)) +
+    geom_histogram(position = "identity", alpha = 0.2, bins = 50) +
+    labs(
+    title = paste("Jtrain2 (Filtered) Average Earnings vs Jtrain3 (Filtered) Average Earnings")
+) + xlab("Average Earnings Distribution")
+```
+
+<span style="color: blue;"> For Jtrain2, the relationship is as follows: </span>
+
+<span style="color: blue;"> `re78` = 1.73691 +  1.58303 x `train` - 0.11676 x `re74`  + 0.17321 x `re75` + 0.35821 x `educ` + 0.044 x `age` - 2.38353 x `black` - 0.3694 x `hisp`</span>
+
+<span style="color: blue;"> For Jtrain3, the relationship is as follows: </span>
+
+<span style="color: blue;"> `re78` = 3.44801 +  1.84445 x `train` - 0.31311 x `re74`  + 0.77435 x `re75` + 0.32831 x `educ` - 0.08315 x `age` - 1.97331 x `black` - 1.10072 x `hisp`</span>
+
+<span style="color: blue;"> Yes, the subsample regressions will be different across these two datasets. This is because the underlying population for these two datasets are different, with jtrain2 being more likely to be a selected group of low earning and less skillful employees selected for job training while jtrain3 more likely to be a random selection from the overall job market, as shown by the histogram visualisation above. As such, the underlying population of the two datasets are different, and it justifies why the subsample regressions achieve significantly different results from each other. </span>
+
+<span style="color: blue;"> As shown from the plot, despite both jtrain2 and jtrain3 average earnings are filtered to be below /$10,000, the distribution of average earnings for jtrain3 is still higher than that of jtrain2. This suggests a higher level of average earnings is received by data in jtrain3, and it reflects on the regression model as jtrain3 achieve higher coefficients for both earnings before training and after training. This suggests that the difference in underlying distribution is the main reason why the two regression models achieve different outcomes. </span>

@@ -1,0 +1,224 @@
+---
+title: "BT2101 GA4 Group 67 Submission"
+author: "Lo Zhi Hao"
+date: "2022-10-23"
+output: html_document
+---
+## 1 Fixed Effect Regression using R
+
+Please use the Fatalities dataset from the AER package in R to answer this question. Please carefully
+read the document of data description.
+Government wants to reduce traffic fatalities by increasing the tax on alcoholic beverages. Thus,
+they need help understanding the relationship between the traffic fatality rate and the alcohol taxes.
+
+```{r Set up the environment, results = FALSE, warning = FALSE, , message=FALSE}
+## Setting up the environment for further studies 
+
+## install.packages("wooldridge")
+## install.packages("dplyr")
+## install.packages("ggplot2")
+## install.packages("AER")
+## install.packages("plm")
+
+library(AER)
+library(dplyr)
+library(knitr)
+library(corrplot)
+library(ggplot2)
+library(plm)
+
+## Downloading the dataset
+data('Fatalities')
+summary(Fatalities)
+head(Fatalities)
+Fatalities <- Fatalities %>% mutate(fatal_rate = fatal / pop)
+```
+
+The basic model is:
+
+FatalityRateit = β0 + β1BeerTaxit x µit (1)
+
+(a) Suppose that the fatality rate FatalityRate is defined as the number of vehicle fatalities divided
+by population. Please generate FatalityRate and estimate the basic model (i.e. a model without
+any fixed effects). Please interpret all the coefficient estimates in your regression table
+
+```{r 1a}
+## creating the linear model
+
+model <- lm(fatal_rate ~ beertax, data = Fatalities)
+summary(model)
+
+```
+
+<span style="color: blue;"> The relationship is as follows: </span>
+
+<span style="color: blue;"> `fatal_rate` = 1.853e-04 +  3.646e-05 x `beertax`</span>
+
+<span style="color: blue;"> Multiple R squared is 0.09336, and Adjusted R squared is 0.09065. </span>
+
+<span style="color: blue;"> When no tax is charged on beer, the coefficient for fatality rate is 1.853e-04, which suggests that the fatality rate due to traffic incidence in a year in USA when the total amount of beer tax is 0 is 1.853e-04. Every 1 dollar increase in beer tax per case is associated with a 3.646e-04 increase in fatality rate in a year in USA. The results for beta0 is statistically significant (p-value = 2e-16 < 0.05), which suggests we are statistically confident that it is different from 0. For beer tax, the coefficient is statistically significant (p-value = 1.08e-08 < 0.05), which suggests that we are statistically confident that the effect of beer tax on fatality rate is different from 0. </span>
+
+(b) Determine how many years and different states there are in the data set. Is it a balanced panel?
+Explain. (Hints: A panel dataset is considered “balanced” when all entities are observed for all
+time periods. If there are any missing values, it is called an unbalanced panel.)
+
+```{r 1b}
+## determining number of years
+
+years <- length(levels(Fatalities$year))
+
+## determining number of states
+
+states <- length(levels(Fatalities$state))
+
+## creating a dataframe to record the data
+
+data1982 <- Fatalities %>% filter(year == 1982)
+bool <- is.pbalanced(Fatalities)
+
+df <- data.frame(years, states, bool, length(data1982$state))
+names(df) <- c("years", "states", "Balanced Or Not", "total number of observations per year")
+kable(df)
+
+## further visualisation for determining whether the data is balanced
+
+Fatalities$year <- as.factor(Fatalities$year)
+balance_check <- Fatalities%>%
+  select(state, year)%>%
+  group_by(state,year)
+
+state_count <- Fatalities%>%
+  select(state)%>%
+  group_by(state)
+
+year_count <- Fatalities%>%
+  select(year)%>%
+  group_by(year)
+
+nrow(summarise(year_count))
+nrow(summarise(state_count))
+table(year_count)
+table(state_count)
+table(balance_check)
+```
+
+<span style="color: blue;"> From our analysis, we can identify 7 years and 48 states. Further research suggests that the years are from 1982 to 1988, and the states are all contiguous federal states from the United States. As we can see from the data frame above, for all years, the total number of observations per year are 48. This suggests that the data is balanced since all variables are observed for all entities and over all time periods.  </span>
+
+(c) Now add a full set of state dummies into the basic model (denoted as model 2). Does the coefficient
+and significance level of BeerTaxit change? Please explain, using your own language, why there is
+a change (or lack of it).
+
+```{r 1c}
+## creating the linear model
+
+model2 <- lm(fatal_rate ~ beertax + state, data = Fatalities)
+summary(model2)
+
+```
+
+<span style="color: blue;"> The coefficient of BeerTax change from 3.646e-05 in model1 to -6.559e-05 in model2. In both models, BeerTax are still statistically significant (p-value = 1.08e-08 in model1 and 0.000556 in model2 < 0.05), which suggests that its effects on fatality rate are still significantly different from 0. </span>
+
+<span style="color: blue;"> As we can see, the coefficient of BeerTax changed from a positive value of 3.646e-05 to a negative value of -6.559e-05 in the new model. This change is due to us creating dummy variables and taking into account all time invariant variables across different states as it is a potential confounding variable. For example, different states have different cultures, density of cars and beer tax rates which might all lead to biased estimates for our dependent variable. As the difference in states is controlled, we can notice that over time, beertax leads to a decreased fatality rate from traffic incidence. </span>
+
+(d) Now add a full set of year dummies into the basic model (denoted as model 3). Does the coefficient
+and significance level of BeerTaxit change? Please explain, using your own language, why there is
+a change (or lack of it).
+
+```{r 1d}
+## creating the linear model
+
+model3 <- lm(fatal_rate ~ beertax + year, data = Fatalities)
+summary(model3)
+
+```
+
+<span style="color: blue;"> The coefficient of BeerTax change from 3.646e-05 in model1 to 3.663e-05 in model3. As the change in both models are minimal (1.7e-7), we can conclude that there is not much change in the coefficient of BeerTax in both models. In both models, BeerTax are still statistically significant (p-value = 1.08e-08 in model1 and 1.18e-08 in model2 < 0.05), which suggests that its effects on fatality rate are still different from 0. </span>
+
+<span style="color: blue;"> As we can see, there is not much change in the coefficient of BeerTax. From this, together with the statistically insignificant coefficients of all the year dummy variables, we can see that the change in years does not affect the fatality rate in a significant way. This might be because all the years are back to back, and it is extremely hard for a city or a district to change their culture in a short period of time (for example in a few years). From this, we can also see that year is not a confounding variable, and including it into the model does not improve the model in any significant ways. </span>
+
+(e) Now use the package plm in R to estimate a model with state fixed effects (denoted as model 4).
+Compare the coefficients in model 2 and model 4. Are the results identical? Why or why not?
+
+```{r 1e}
+## creating the linear model
+
+model4 <- plm(fatal_rate ~ beertax, data = Fatalities, effect = "individual", model = "within")
+summary(model4)
+
+```
+
+<span style="color: blue;"> The coefficient of BeerTax remained the same at -6.5587e-05 for both model2 and model4. In both models, BeerTax are still statistically significant (p-value = 1.08e-08 in model2 and 0.000556 in model4 < 0.05), which suggests that its effects on fatality rate are still different from 0. </span>
+
+<span style="color: blue;"> As we can see, the coefficient of BeerTax remained the same throughout the two models. This is due to both models performing the same entity fixed effect regression on the dataset. For model2, it utilises the "n-1 binary regressors" OLS regression, which is another notation of entity fixed effect regression that basically achieves the same outcome as entity fixed effect regression used above. Thus there are no doubt that the results are unchanged in both models. </span>
+
+(f) Now use the package plm in R to estimate the basic model with year-fixed effects (denoted as model
+5). Compare the coefficients in model 3 and model 5. Are the results identical? Why or why not?
+
+```{r 1f}
+## creating the linear model
+
+model5 <- plm(fatal_rate ~ beertax, data = Fatalities, effect = "time", model = "within")
+summary(model5)
+
+```
+
+<span style="color: blue;"> The coefficient of BeerTax remained the same at 3.6634e-05 for both model3 and model5. In both models, BeerTax are still statistically significant (p-value = 1.177e-08 in model5 and 1.18e-08 in model3 < 0.05), which suggests that its effects on fatality rate are still  different from 0. </span>
+
+<span style="color: blue;"> As we can see, the coefficient of BeerTax remained the same. This is mainly due to both model3 and model5 performing the same time fixed effect regression on the dataset. For model3, it utilises the "t-1 binary regressors" OLS regression, which is another notation of time fixed effect regression that basically achieves the same outcome as the time fixed effect regression used above. Thus it is expected that the results are unchanged in both models. From this, we can see once again that the change in years does not affect the fatality rate in a significant way. This might be because all the years are back to back, and it is extremely hard for a city or a district to change the culture in a short period of time (for example in a few years). </span>
+
+(g) A scholar argues that the state of the nation’s economy will affect the quality of road infrastructure
+and thus influence traffic fatalities. Supposing we have the data of GDP (Gross Domestic Product)
+for every year, do we need to add that variable into model 3 to control for the national economic
+condition? Why or why not?
+
+<span style="color: blue;"> From our team's perspective, we believe that we shouldn't include GDP into model 3. This is because model3 is a time fixed effect. For the national economic condition as GDP(a national index which is identical to all of the states in US), as it is a entity invariant variable, it doesn't varies across entities. As it is already captured in our regressor in model 3, we do not need to control for it again as it is already controlled in the original regression model. </span>
+
+(h) Follow the steps for a state fixed effects regression via demeaning and estimate a new model on the
+entity-demeaned variables. Are the results identical to model 4? Are they identical to model 2?
+
+```{r 1h}
+## creating the mean for entity-demeaned variables, including fatal_rate and beertax
+
+fatalities_copy <- Fatalities
+
+fatalities_copy <- fatalities_copy %>% group_by(state) %>% mutate(across(fatal_rate, ~ mean(.), .names = "{col}.mean"))
+fatalities_copy <- fatalities_copy %>% group_by(state) %>% mutate(across(beertax, ~ mean(.), .names = "{col}.mean"))
+## fatalities_copy
+
+fatalities_copy <- fatalities_copy %>% 
+  mutate(fatal_rate_demeaned = fatal_rate - fatal_rate.mean) %>% 
+  mutate(beertax_demeaned = beertax - beertax.mean)
+
+model6 <- lm(fatal_rate_demeaned ~ beertax_demeaned, data = fatalities_copy)
+summary(model6)
+
+```
+
+<span style="color: blue;"> The coefficient of BeerTax is -6.559e-05 for model6, which is exactly the same as model2 and model4. In all three models, BeerTax are still statistically significant (p-value = 1.08e-08 in model2 and 0.000556 in model4 and 0.000196 in model6 < 0.05), which suggests that its effects on fatality rate are still different from 0. </span>
+
+<span style="color: blue;"> As we can see, the coefficient of BeerTax remained the same throughout all three models. This is due to all three models performing the same entity fixed effect regression on the dataset. For model2, it utilises the "n-1 binary regressors" OLS regression, which is another notation of entity fixed effect regression that basically achieves the same outcome as entity fixed effect regression used in model4. Model6 utilises the "entity-demeaned" OLS regression, which essentially achieves the same outcome as model2 and model4 because it is just another way of representing and implementing the entity fixed effect regression. Thus there are no doubt that the results are unchanged in all three models. </span>
+
+(i) Follow the steps for a year fixed effects regression via demeaning and estimate a model on the
+time-demeaned variables. Are the results identical to model 5? Are they identical to model 3?
+
+```{r 1i}
+## creating the mean for time-demeaned variables, including fatal_rate and beertax
+
+fatalities_copy2 <- Fatalities
+
+fatalities_copy2 <- fatalities_copy2 %>% group_by(year) %>% mutate(across(fatal_rate, ~ mean(.), .names = "{col}.mean"))
+fatalities_copy2 <- fatalities_copy2 %>% group_by(year) %>% mutate(across(beertax, ~ mean(.), .names = "{col}.mean"))
+fatalities_copy2
+
+fatalities_copy2 <- fatalities_copy2 %>% 
+  mutate(fatal_rate_demeaned = fatal_rate - fatal_rate.mean) %>% 
+  mutate(beertax_demeaned = beertax - beertax.mean)
+
+model7 <- lm(fatal_rate_demeaned ~ beertax_demeaned, data = fatalities_copy2)
+summary(model7)
+
+```
+
+<span style="color: blue;"> The coefficient of BeerTax remained at 3.663e-05 for model7, which is the same as model3 and model5 as stated above. In all three models, BeerTax are still statistically significant (p-value = 1.177e-08 in model5 and 1.18e-08 in model3 and 8.66e-09 in model7 < 0.05), which suggests that its effects on fatality rate are still different from 0. </span>
+
+<span style="color: blue;"> As we can see, the coefficient of BeerTax remained the same. This is mainly due to all three models performing the same time fixed effect regression on the dataset. For model3, it utilises the "t-1 binary regressors" OLS regression, which is another notation of time fixed effect regression that basically achieves the same outcome as the time fixed effect regression used in model5. Futhermore, model7 utilises the "Time demeaned" OLS regression method, which is just another way of representing the time fixed effect regression mentioned above. Thus it is expected that the results are unchanged in all three models. </span>

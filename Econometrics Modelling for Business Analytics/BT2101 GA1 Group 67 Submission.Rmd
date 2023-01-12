@@ -1,0 +1,167 @@
+---
+title: "BT2101 GA1 Group 67 Submission"
+author: "Lim Zhen Yong A0236495U, Lim Shaun Lii A0236519Y, Jared Lau ZiLek A0236485W, Lo Zhi Hao A0236437B"
+date: "2022-10-04"
+output: html_document
+---
+## 1 Introduction to R
+
+Please use the discrim dataset from the Wooldridge package in R to answer this question. You can also read the given .xlsx file if you cannot load the data directly in R. Please carefully read the document of variable description.
+
+This dataset contains zip code-level data on prices for various items at fast-food restaurants, along with
+characteristics of the zip code population, in New Jersey and Pennsylvania. The idea is to see whether
+fast-food restaurants charge higher prices in areas with a larger concentration of blacks.
+
+```{r Set up the environment, results = FALSE, warning = FALSE, , message=FALSE}
+## Setting up the environment for further studies 
+
+## install.packages("wooldridge")
+## install.packages("dplyr")
+## install.packages("MASS")
+
+library(wooldridge)
+library(dplyr)
+library(MASS)
+library(knitr)
+library(corrplot)
+
+## documentation for MASS is at https://cran.r-project.org/web/packages/MASS/MASS.pdf
+
+## Downloading the dataset
+
+data('discrim')
+## ?discrim
+```
+
+```{r}
+summary(discrim)
+head(discrim)
+```
+
+**(a) Please find the sample means of `prpblck` and `income` in the data set, along with their sample**
+**standard deviations.**
+
+```{r 1a}
+## finding mean and SD for prpblck
+
+## discrim$prpblck
+## missing data is omitted when performing the calculation
+meanPRPBLCK <- mean(discrim$prpblck, na.rm = TRUE)
+sdPRPBLCK <- sd(discrim$prpblck, na.rm = TRUE)
+
+data.frame(meanPRPBLCK, sdPRPBLCK)
+
+## finding mean and SD for income
+
+## discrim$income
+## missing data is omitted when performing the calculation
+meanINCOME <- mean(discrim$income, na.rm = TRUE)
+sdINCOME <- sd(discrim$income, na.rm = TRUE)
+
+data.frame(meanINCOME, sdINCOME)
+```
+<span style="color: blue;"> mean of prpblck = 0.1134864 </span>
+
+<span style="color: blue;"> mean of income = 47053.78 </span>
+
+<span style="color: blue;"> sd of prpblck = 0.1824165 </span>
+
+<span style="color: blue;"> sd of income = 13179.29 </span>
+
+**(b) Use the rlm command from the MASS package in R to estimate the linear model below. It is okay**
+**to use rlm with default settings. Report the results in equation form, including the sample size and**
+**R2. Interpret the coefficient of prpblck. Is it meaningful? Is it worth looking into?**
+
+
+<center> `psoda` = `β0` +  `β1` x `prpblck` + `µ` (1) </center> 
+
+
+```{r q1b}
+## running the linear model 
+
+lm <- lm(psoda ~ prpblck, data = discrim)
+summary(lm)
+## Sample size = 401
+## Multiple R squared is 0.01808
+## Adjusted R squared is 0.01561 
+```
+<span style="color: blue;"> The relationship is as follows: </span>
+
+<span style="color: blue;"> `psoda` = 1.03740 +  0.06493 x `prpblck` </span>
+
+<span style="color: blue;"> Sample size = 401 </span>
+
+<span style="color: blue;"> Multiple R squared is 0.01808, and Adjusted R squared is 0.01561. </span>
+
+<span style="color: blue;"> A 1 unit change in proportion of black residents in the zipcode area is associated with a 0.06493 change in the price of medium soda. This marks an approximately 0.06493 / 1.0374 x 100% = 6.25% increase in the price of soda in areas where the population is all black compared to areas in which there are no black population. This relationship is statistically significant (p-value = 0.00702 < 0.05), which suggests that we are statistically confident that a change in `prpblck` is associated with a change in `psoda`. Although the relationship is small in scale, its statistical significance suggests that this is a meaningful relationship, and thus is worth looking into. </span>
+
+**(c) Can you use the model above to make causal claims? Why or Why not? Do you see any potential**
+**threats to internal validity?**
+
+```{r 1c}
+## creating a correlation matrix to investigate and have a rough understanding of the relationship between different variables 
+
+cor.model <- cor(discrim[, c('psoda', 'lpsoda', 'wagest', 'prpblck', 'prppov', 'prpncar', 'hseval', 'nstores', 'income', 'lhseval', 'lincome', 'ldensity', 'NJ', 'crmrte', 'state')], use = "complete.obs")
+round(cor.model, 2)
+
+## Creating a correlation matrix plot to better visualise the relationship
+
+corrplot(cor.model, method = 'ellipse')
+
+```
+
+
+<span style="color: blue;"> No. This is due to the omitted variable bias that might be present in the model. For example, as `income` and `hseval`  has a relationship with price of medium soda as well as are correlated to the proportion of black residents in the area, `income` and `hseval` might be some underlying confounding variables that affects the linear model. </span>
+
+<span style="color: blue;"> Other potential confounding variables includes the crime rate `crmrte` of the zipcode area. From the correlation matrix, we can notice that the crime rate is positively correlated with the proportion of black residents in the area. As the crime rate of an area increases, there might be less customers that are willing to visit the fast food store. Thus, the store might need to reduce the price to attract more customers. </span>
+
+<span style="color: blue;"> Thus, as some of the potential confounding variables are omitted, it suggests that there are omitted variables bias, which violates the internal validity and OLS assumptions. Thus, the model cannot give causal inference between prpblck and psoda. </span>
+
+**(d) What could be potential confounding variables affecting causal inference in the model above? Try**
+**to be comprehensive and clearly lay out the logic behind each variable you list out.**
+
+<span style="color: blue;"> Some of the confounding variables might include different types of fast food chains, the purchasing power of residents living in the area, and the demographic of the township where the data is recorded  </span>
+
+<span style="color: blue;"> For types of fast food chains (`chain`), different types of fast food chains have different pricings, and the black population might have a preference for certain fast food chains which leads to uneven distribution of fast food chains. Without taking into account these fast food chains and fixating on only one of them, we are unable to conclude that there is a relationship between price of soda and proportion of black residents. </span>
+
+<span style="color: blue;"> For the purchasing power of residents living in the area, if the purchasing power of the residents in the town is higher, it suggests that the area overall has a higher living standard and thus might lead to a higher price for soda. Similarly, as shown by the correlation between housing value (`hseval`) and proportion of black residents (`prpblck`) and the correlation between income (`income`) and proportion of black residents (`prpblck`), we can notice that in general the purchasing power of the residents in the area and the proportion of black residents is negatively associated. Thus, it might be a confounding variable as it has a relationship with both price of soda and proportion of black residents. </span>
+
+<span style="color: blue;"> For the demographic of the township where the data is recorded, different townships have different population and race constituents, which suggests a possible difference in purchasing habits and consumer preference. As demand increases for a certain product (such as soda), the price will also increase accordingly. Meanwhile, the demographic of the township is also associated with the proportion of black residents, as proportion of black residents make up a part of what makes the township what it is. Different races might have different purchasing and living habits, and thus the proportion of black residents in a district might be associated with the demographic of the town. Thus, it might be a confounding variable as it has a relationship with both price of soda and proportion of black residents. </span>
+
+**(e) Which of the potential confounding variables above are measurable and which of them are not**
+**measurable? Give reasons for your classification. Which of them do you have access to in the data**
+**set? Can you think of proxies for those that are not measurable?**
+
+<span style="color: blue;"> For types of fast food chains (`chain`), it is a measurable variable that can be measured by taking into account the `chain` variable in the model above. </span>
+
+<span style="color: blue;"> On the other hand, purchasing power of residents living in the area is an immeasurable variable that cannot be measured directly from the data set. As we are unable to quantitatively measure purchasing power in the population, we decided to use `income` and `hseval` as proxies to represent the purchasing power. </span>
+
+<span style="color: blue;"> Meanwhile, the demographic of the township where the data is recorded is also another immeasurable variable that cannot be measured directly from the data set. As we are unable to quantitatively measure the demographic of the township, we have decided to use `NJ` as a proxy to represent the demographic of the township. </span>
+
+**(f) Include the ones that are measurable and available in your regression equation and rerun the**
+**regression. How does the coefficient of prpblck change? How do the Adjusted R2 and Multiple**
+**R2 change? What is your new interpretation of the estimated relationship between prpblack and**
+**psoda?**
+
+```{r q1f}
+## running the linear model 
+
+linear.model <- lm(psoda ~ prpblck + income + hseval + as.factor(chain) + as.factor(NJ), data = discrim)
+summary(linear.model)
+
+## coefficient for prpblck changes by 0.05783 - 0.06493 = - 0.0071
+## Multiple R squared increased from 0.01808 to 0.4577
+## Adjusted R squared increased from 0.01561 to 0.448 
+```
+
+<span style="color: blue;"> The relationship is as follows: </span>
+
+<span style="color: blue;"> `psoda` = 0.9971 +  0.05783 x `prpblck` - 2.146e-06 x `income` + 7.023e-07 x `hseval` - 0.04809 x `KFC` + 0.05146 x `Roy Rogers` - 0.07741 x `Wendy's` + 0.05855 x `NJ`</span>
+
+<span style="color: blue;"> Coefficient for prpblck changes by 0.05783 - 0.06493 = - 0.0071 </span>
+
+<span style="color: blue;"> Multiple R squared increased from 0.01808 to 0.4577 </span>
+
+<span style="color: blue;"> Adjusted R squared increased from 0.01561 to 0.448  </span>
+
+<span style="color: blue;"> Holding other factors constant, a 1 unit change in proportion of black residents in the zipcode area is associated with a 0.05783 change in the price of medium soda. This marks an approximately 0.05783 / 0.9971 x 100% = 5.8% increase in the price of soda in areas where the population is all black compared to areas in which there are no black population. This relationship is statistically significant (p-value = 0.00632 < 0.05), which suggests that we are statistically confident that a change in `prpblck` is associated with a change in `psoda`. Although the relationship is small in scale, its statistical significance suggests that this is a meaningful relationship, and thus is worth looking into. </span>

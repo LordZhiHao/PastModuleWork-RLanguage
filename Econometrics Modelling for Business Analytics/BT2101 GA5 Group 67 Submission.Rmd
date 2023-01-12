@@ -1,0 +1,121 @@
+---
+title: "BT2101 GA5 Group 67 Submission"
+author: "Lo Zhi Hao"
+date: "2022-10-31"
+output: html_document
+---
+## 1 Fixed Effect Regression using R
+
+Please use the jtrain dataset from Wooldridge package in R to answer this question. Please carefully read
+the document of data description, and refer to the cited paper in the document if necessary.
+For this exercise, we want to determine the effect of the job training grant on hours of job
+training per employee. The basic model is:
+
+hrsempit = β0 + β1 x grantit + β2 x employit + µit (1)
+
+```{r Set up the environment, results = FALSE, warning = FALSE, , message=FALSE}
+## Setting up the environment for further studies 
+
+## install.packages("wooldridge")
+## install.packages("dplyr")
+## install.packages("ggplot2")
+
+library(wooldridge)
+library(dplyr)
+library(knitr)
+library(corrplot)
+library(ggplot2)
+
+## Downloading the dataset
+data('jtrain')
+summary(jtrain)
+head(jtrain)
+
+```
+
+(a) Estimate the basic model seen above in equation (1). Please interpret the meaning of β1.
+
+```{r 1a}
+## creating the linear model
+
+model <- lm(hrsemp ~ grant + employ, data = jtrain)
+summary(model)
+
+```
+
+<span style="color: blue;"> The relationship is as follows: </span>
+
+<span style="color: blue;"> `hrsemp` = 13.56561 +  33.71094 x `grant` + -0.06028 x `employ`</span>
+
+<span style="color: blue;"> Multiple R squared is 0.2421, and Adjusted R squared is 0.2382. </span>
+
+<span style="color: blue;"> For coefficient of Beta1, it is 33.71094, which suggests that firms that receive a job training grant is associated to a 33.71094 increase in the total number of training hours per individual employee compared to firms which did not receive grants holding other factors constant. This coefficient is statistically significant (p-value = 2e-16 < 0.05), which suggests that we are statistically confident that the effect of receiving grant on total number of training hours per individual employee is significantly different from 0. </span>
+
+(b) Use log-transformed variable lhrsemp as the dependent variable and repeat a similar regression as
+Question (a). Please interpret the meaning of β1.
+
+```{r 1b}
+## creating the linear model
+
+model2 <- lm(lhrsemp ~ grant + employ, data = jtrain)
+summary(model2)
+
+```
+
+<span style="color: blue;"> The relationship is as follows: </span>
+
+<span style="color: blue;"> `lhrsemp` = 1.4786187 +  2.1065903 x `grant` - 0.0024020  x `employ`</span>
+
+<span style="color: blue;"> Multiple R squared is 0.2475, and Adjusted R squared is 0.2436. </span>
+
+<span style="color: blue;"> For coefficient of Beta1, it is 2.1065903, which suggests firms that receiving a job training grant is associated to a 2.1065903 x 100 % = 210.65% increase in the total number of training hours per individual employee compared to firms which did not receive grants holding other factors constant. This coefficient is statistically significant (p-value = 2e-16 < 0.05), which suggests that we are statistically confident that the effect of receiving grant on log-transformed total number of training hours per individual employee is significantly different from 0. </span>
+
+(c) There are many confounders that could bias the relationship between job training grants and hours
+of job training per employee. Suppose those confounders can be categorized into time-invariant,
+firm-invariant, and fully flexible (variable both in time and by firms). This division is mutually
+exclusive. Please identify one confounder for one category. Clearly articulate your logic for the
+confounding pathway and why it belongs to that particular category above.
+
+<span style="color: blue;"> For time invariant confounder, we identified industry for the firms as a time invariant confounder. Different firms in different industries may or may not receive the grants from local authorities based on the industry that the government wants to develop. For example, if the local government at California prefers to develop the technology industry, firms in semiconductor industry might be easier to receive grants compared to firms which are in the textile industry. For hours of employee training, some industry requires more precise and advanced machinery and technology, and thus may have to invest more hours into job training for employees. As a firm's industry will be relatively stable for the short term (for example in a few years), it is essentially time invariant. Thus, as it may be associated to both hours of job training per employee and job training grants awarded, it is thus a time invariant confounding variable that might exist in the model. </span>
+
+<span style="color: blue;"> For entity invariant confounder, we identified the state policy as a potential entity invariant confounder. For state policy, the change in policies and regulations for different manufacturing industries may be associated to different amount of hours of job training per employee. At the same time, different in state policy across different years may be associated with different amount and focus area for awarding job training grants. As every firm in the dataset is in the same state, state policy will affect all firms, regardless of the firm's background and culture thus it is entity invariant. Therefore, as it is both associated to hours of job training per employee and job training grants awarded, it is thus an entity invariant confounding variable that might exist in the model.</span>
+
+<span style="color: blue;"> For fully flexible confounder, we identified technology as a potential fully flexible confounder. For technology, the more advanced the technology needed for the production for the firm, the more hours is needed to train and educate the employees on how to use it thus it may be associated with hours of job training per employee. At the same time, firms which possess valuable technology may be more likely to receive job training grants from the state government, as it may be recognised as technology that may change and improve the lives of residents by the state government. Thus it may be associated with the job training grant as well. As each firm possess different technologies and uses different technologies for production, it differs from entity to entity, and as technologies may be advanced over time through research and development, it differs across time as well. Therefore, as it is both associated to hours of job training per employee and job training grants awarded, it is thus a fully flexible confounding variable that might exist in the model. </span>
+
+(d) Estimate a model that adds a full set of firm dummies and year dummies into the basic model, does
+β1 change compared to the basic model in Question (a)? Explain why or why not.
+
+```{r 1d}
+## creating the linear model
+
+model3 <- lm(hrsemp ~ grant + employ + as.factor(year) + as.factor(fcode), data = jtrain)
+summary(model3)
+
+```
+
+<span style="color: blue;"> For coefficient of Beta1, it is 34.39102, which suggests that firms that receive a job training grant on the year itself is associated to a 34.39102 increase in the total number of training hours per individual employee. This is a slight change from the value of 33.71094 that we found out earlier in the model above. This might be because the firm-specific and year-specific confounding variables are not causing a major bias in the model as stated above. This coefficient is statistically significant (p-value = 2e-16 < 0.05), which suggests that we are statistically confident that the effect of receiving grant on total number of training hours per individual employee is significantly different from 0. </span>
+
+(e) Estimate a model using only the entity-demeaned variables, does β1 change compared to the basic
+model in question (a)? Does β1 change compared to the two-way fixed effects model in Question
+(d)? Explain why or why not.
+
+```{r 1e}
+## creating the linear model
+
+jtrain_temp <- jtrain %>% group_by(fcode) %>% mutate(grant_demeaned = grant - mean(grant)) %>% mutate(employ_demeaned = employ - mean(employ)) %>% mutate(hrsemp_demeaned = hrsemp - mean(hrsemp))
+jtrain_temp
+
+model4 <- lm(hrsemp_demeaned ~ grant_demeaned + employ_demeaned, data = jtrain_temp)
+summary(model4)
+
+```
+
+<span style="color: blue;"> For coefficient of Beta1 in model4, it is 34.90, which suggests that firms that receive a job training grant on the year itself is associated to a 34.90 increase in the total number of training hours per individual employee. This is a slight change from the value of 34.39102 that we found out earlier in the model3 and 33.71094 in model1 above. This might be because that the firm-specific confounding variable is not causing a major bias in the model as stated above. This coefficient is statistically significant (p-value = 2e-16 < 0.05), which suggests that we are statistically confident that the effect of receiving grant on total number of training hours per individual employee is significantly different from 0. </span>
+
+(f) For each confounder you identified in Question (c): explain whether or not it has been controlled
+for in the model in Question (d). Also explain whether or not it has been controlled for in the
+model in Question (e).
+
+<span style="color: blue;"> In question (d), the year dummy variable and firm code dummy variable are taken into consideration. Therefore, the model essentially controls for time invariant and entity invariant data. As such, as we are able to control for both across time and firms, but they each controls for time and entity respectively and does not control for fully flexible variables as they vary across time and entity. A timed fixed and entity fixed regression controls for entity invariant and time invariant confounders respectively but not for fully flexible variable .For example,A fully flexible reacts like our independent variable with two subscripts, if it is eliminated by N+T-2 regression or through entity demeaned regression, we are technically saying that we will also eliminate our primary independent variable as well. Thus, it has control over time invariant and entity invariant variables, but not for fully flexible variables which we suggest may not be able to be controlled for using panel regression technique. </span>
+
+<span style="color: blue;"> In question (e), entity-demeaned hrsemp, grant and employ variables are created and being used in the model itself. Therefore, it shows that the model only controls for time invariant variables. From this, we can see that only time invariant is controlled for, while entity invariant and fully flexible variables are not included in the model. </span>

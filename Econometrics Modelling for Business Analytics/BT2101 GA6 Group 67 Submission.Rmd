@@ -1,0 +1,168 @@
+---
+title: "BT2101 GA6 Group 67 Submission"
+author: "Lo Zhi Hao"
+date: "2022-11-06"
+output: html_document
+---
+## 1 Instrumental Variable Regression using R
+
+Please use the movies data set to answer the following questions. Please carefully read the document of
+data description.
+
+Does viewing a violent movie lead to violent behavior? If so, the incidence of violent crimes,
+such as assaults, should rise following the release of a violent movie. Alternatively, movie viewing may
+substitute for other activities (such as alcohol consumption) that lead to violent behavior, so that
+assaults should fall when more people are attracted to the cinema (rather than alcohol consumption).
+The data set movies contains data on the number of assaults and movie attendance for 516
+weekends from 1995 through 2004. It includes weekend attendance for violent movies (such as
+Hannibal), mildly violent movies (such as SpiderMan), and nonviolent movies (such as Finding
+Nemo). Additionally, the data set includes a count of assaults for the same weekend in a subset
+of counties. Lastly, the data set includes indicators for the year, month, whether the weekend is a
+holiday, and various weather measures.
+
+```{r Set up the environment, results = FALSE, warning = FALSE, , message=FALSE}
+## Setting up the environment for further studies 
+
+## install.packages("wooldridge")
+## install.packages("dplyr")
+## install.packages("ggplot2")
+## install.packages("ivreg", dependencies = TRUE)
+## install.packages("tidyverse")
+
+library(wooldridge)
+library(dplyr)
+library(knitr)
+library(corrplot)
+library(ggplot2)
+library(ivreg)
+library(readxl)
+
+## loading the dataset
+movies <- read_excel("GA6-movies.xlsx")
+summary(movies)
+head(movies)
+```
+
+(a) Regress ln assaults onto attend v, using the year and month indicators, the weather and holiday
+indicators as control variables (denoted as the basic model). Based on this regression, is viewing
+a strongly violent movie correlate with the number of assaults? Interpret the coefficient estimates
+(Notes: When interpreting estimates, always include the precision of these estimates in your discussion).
+
+```{r 1a}
+## mutating variables 
+
+movies <- movies %>%
+  mutate(yr = ifelse(year1 == 1, 1, 
+                     ifelse(year2 == 1, 2, 
+                            ifelse(year3 == 1, 3, 
+                                   ifelse(year4 == 1, 4, 
+                                          ifelse(year5 == 1, 5, 
+                                                 ifelse(year6 == 1, 6, 
+                                                        ifelse(year7 == 1, 7, 
+                                                               ifelse(year8 == 1, 8, 
+                                                                      ifelse(year9 == 1, 9, 10)))))))))) %>%
+  mutate(month = ifelse(month1 == 1, 1, 
+                     ifelse(month2 == 1, 2, 
+                            ifelse(month3 == 1, 3, 
+                                   ifelse(month4 == 1, 4, 
+                                          ifelse(month5 == 1, 5, 
+                                                 ifelse(month6 == 1, 6, 
+                                                        ifelse(month7 == 1, 7, 
+                                                               ifelse(month8 == 1, 8, 
+                                                                      ifelse(month9 == 1, 9,
+                                                                             ifelse(month10 == 1, 10,
+                                                                                    ifelse(month11 == 1, 11, 12)))))))))))) 
+  
+## creating the linear model
+
+basic.model <- lm(log(assaults) ~ attend_v + as.factor(yr) + as.factor(month) + h_chris + h_newyr + h_easter + h_july4 + h_mem + h_labor + w_rain + w_snow + w_maxa + w_maxb + w_maxc + w_mina + w_minb + w_minc, data = movies)
+summary(basic.model)
+
+## plotting correlation to 
+cor(log(movies$assaults), movies$attend_v)
+plot(log(movies$assaults), movies$attend_v)
+```
+
+<span style="color: blue;"> The relationship is as follows: </span>
+
+<span style="color: blue;"> `log(assaults)` = 6.8787365 - 0.0008530 x `attend_v` + other independent control variables, including year, month, holiday and weather</span>
+
+<span style="color: blue;"> Multiple R squared is 0.9957, and Adjusted R squared is 0.9954. </span>
+
+<span style="color: blue;"> When there are no viewing of strongly violent movies, for year 1995 month January without any considering any fraction of weather and with no holiday, the number of assaults and intimidation in a subset of U.S. counties is e^6.8787365. For coefficient of viewing of strongly violent movies, it is -0.0008530, which suggests that a one million increase in viewing of strongly violent movie in year 1995 January without any considering any fraction of weather and without holiday is associated with a 0.0853% decrease in the number of assaults and intimidation in a subset of U.S. counties. This coefficient is statistically insignificant (p-value = 0.33936 > 0.05), which suggests that we have insufficient statistical evidence to reject the null hypothesis and conclude that the relationship is significantly different from 0. Essentially, we cannot conclude that the viewing of strongly violent movie has any association with the number of assaults and intimidation in a subset of U.S. counties. </span>
+
+(b) It is difficult to control for all confounders that bias the relationship between assaults and movie
+attendance. However, the data set includes a potential instrument variable (IV): pr attend v. This
+is a predicted value for the film’s attendance in a given weekend based only on historical attendance
+patterns (i.e., it does not utilize information from that same weekend on which the prediction is
+made). For example, if a film’s attendance is high in the first week of its release, then this can be
+used to predict that its attendance is also high in the second week of its release. Please explain
+whether pr attend v is a valid instrument variable according to your understanding.
+
+```{r 1b}
+## finding correlation between pr_attend_v and attend_v
+cor(movies$pr_attend_v, movies$attend_v)
+```
+
+<span style="color: blue;"> For a variable to be a instrumental variable, it has to satisfy both instrument relevance and instrument exogeneity. </span>
+
+<span style="color: blue;"> For pr_attend_v, as seen by the correlation computed above, the correlation between pr_attend_v and attend_v is very high at 0.964. From a logical standpoint, this is reasonable as pr_attend_v is computed by taking into account the predicted value for the violent rated movie based on historical attendance pattern. Therefore, as pr_attend_v and attend_v are highly correlated and the correlation between these two variables are reasonable, it is safe to say that pr_attend_v satisfies instrument relevance.  </span>
+
+<span style="color: blue;"> For pr_attend_v, as shown by the definition of pr_attend_v, it is a value that is predicted based on the historical attendance data for every week, and thus it is only correlated to assault numbers through the the actual attendance of violent movies. Therefore, it is not affected by the fraction of weather for the week and whether the weekend is a holiday or not, as it utilises historical data that precedes both of these. At the same time, as it utilises historical data, it is therefore not correlated with any of the years and months indicator, and we can suggest with confidence that the pr_attend_v is not affected in a significant way by years and months as well. Therefore, as pr_attend_v is not likely to be correlated to every other control variable in the model, we can safely conclude that it satisfies the instrument exogeneity requirement as well. </span>
+
+<span style="color: blue;"> Therefore, as it satisfies both instrument relevance and instrument exogeneity, we can confidently conclude that pr_attend_v is a valid instrument variable according to our understanding. </span>
+
+(c) Estimate a model that uses pr attend v as an instrument variable to replace attend v in the model
+in Question (a) Using the lm() command in R to execute 2SLS manually. Interprete the coeficient
+estimates. Compared to the model in Question (a), explain the change in coefficient estimates, if
+any.
+
+```{r 1c}
+## variables:
+## dependent variable : log(assaults)
+## endogeneous variable : attend_v
+## exogeneous variable : pr_attend_v
+
+## finding predicted values:
+tempLm <- lm(attend_v ~ pr_attend_v + as.factor(yr) + as.factor(month) + h_chris + h_newyr + h_easter + h_july4 + h_mem + h_labor + w_rain + w_snow + w_maxa + w_maxb + w_maxc + w_mina + w_minb + w_minc, data = movies)
+summary(tempLm)
+attend_hat <- fitted.values(tempLm)
+movies <- movies %>% mutate(attend_hat = attend_hat)
+
+## running the linear model
+basic.model2 <- lm(log(assaults) ~ attend_hat + as.factor(yr) + as.factor(month) + h_chris + h_newyr + h_easter + h_july4 + h_mem + h_labor + w_rain + w_snow + w_maxa + w_maxb + w_maxc + w_mina + w_minb + w_minc, data = movies)
+summary(basic.model2)
+
+```
+
+<span style="color: blue;"> The relationship is as follows: </span>
+
+<span style="color: blue;"> `log(assaults)` = 6.8791439 - 0.0010973 x `attend_hat` + other independent control variables, including year, month, holiday and weather</span>
+
+<span style="color: blue;"> Multiple R squared is 0.9957, and Adjusted R squared is 0.9954. </span>
+
+<span style="color: blue;"> When there are no viewing of strongly violent movies, for year 1995 month January without any considering any fraction of weather and with no holiday, the number of assaults and intimidation in a subset of U.S. counties is e^6.8791439. For coefficient of viewing of strongly violent movies, it is -0.0010973, which suggests that a one million increase in viewing of strongly violent movie in year 1995 January without any considering any fraction of weather and without holiday is associated with a 0.109% decrease in the number of assaults and intimidation in a subset of U.S. counties. This coefficient is statistically insignificant (p-value = 0.23641 > 0.05), which suggests that we have insufficient statistical evidence to reject the null hypothesis and conclude that the relationship is significantly different from 0. Essentially, we cannot conclude that the viewing of strongly violent movie has any association with the number of assaults and intimidation in a subset of U.S. counties. </span>
+
+<span style="color: blue;"> The intercept goes from 6.8787365 to 6.8791439, marked a 0.0004074 difference between models in (a) and (c). And they are both statistical significance with p-values of 2e-16. Compared to model in part (a), despite everything else remain constant other than substituting in attend_hat for attend_v, we notice that there is a slight change in coefficient from -0.0008530 to -0.0010973 for attend_v and attend_hat respectively. The change in both intercept and coefficient for attend_v might be due to the part of viewings of strongly violent movies that are deviated and biased by non-measured confounding variables being removed from the linear model through the use of instrumental variable pr_attend_v. The p-value still remained statistically insignificant despite the change in coefficient and variables, which suggests that we still are unable to conclude that the viewing of strongly violent movie has any association with the number of assaults and intimidation in a subset of U.S. counties. </span>
+
+(d) Using the ivreg() function in R, estimate a similar IV regression model as shown in Question (c).
+Compare this model to the model in Question (c) AND the basic model in Question (a), explain
+the change in coefficient estimates, if any
+
+```{r ld}
+## running ivreg()
+basic.model3 <- ivreg(log(assaults) ~ attend_v + as.factor(yr) + as.factor(month) + h_chris + h_newyr + h_easter + h_july4 + h_mem + h_labor + w_rain + w_snow + w_maxa + w_maxb + w_maxc + w_mina + w_minb + w_minc | as.factor(yr) + as.factor(month) + h_chris + h_newyr + h_easter + h_july4 + h_mem + h_labor + w_rain + w_snow + w_maxa + w_maxb + w_maxc + w_mina + w_minb + w_minc + pr_attend_v , data = movies)
+summary(basic.model3)
+```
+
+<span style="color: blue;"> The relationship is as follows: </span>
+
+<span style="color: blue;"> `log(assaults)` = 6.8791439 - 0.0010973 x `attend_v` + other independent control variables, including year, month, holiday and weather</span>
+
+<span style="color: blue;"> Multiple R squared is 0.9957, and Adjusted R squared is 0.9954. </span>
+
+<span style="color: blue;"> When there are no viewing of strongly violent movies, for year 1995 month January without any considering any fraction of weather and with no holiday, the number of assaults and intimidation in a subset of U.S. counties is e^6.8791439. For coefficient of viewing of strongly violent movies, it is -0.0010973, which suggests that a one million increase in viewing of strongly violent movie in year 1995 January without any considering any fraction of weather and without holiday is associated with a 0.109% decrease in the number of assaults and intimidation in a subset of U.S. counties. This coefficient is statistically insignificant (p-value = 0.23641 > 0.05), which suggests that we have insufficient statistical evidence to reject the null hypothesis and conclude that the relationship is significantly different from 0. Essentially, we cannot conclude that the viewing of strongly violent movie has any association with the number of assaults and intimidation in a subset of U.S. counties. </span>
+
+<span style="color: blue;"> The intercept goes from 6.8787365 to 6.8791439, marked a 0.0004074 difference between models in (a) and (d). And they are both statistical significance with p-values of 2e-16. Compared to model in part (a), we notice that there is a slight change in coefficient from -0.0008530 to -0.0010973 for attend_v in part (a) and attend_v in part (d) respectively. This might be due to the part of viewings of strongly violent movies that are deviated and biased by non-measured confounding variables being removed from the linear model through the use of the ivreg package and function. The p-value still remained statistically insignificant despite the change in coefficient and variables, which suggests that we still are unable to conclude that the viewing of strongly violent movie has any association with the number of assaults and intimidation in a subset of U.S. counties. </span>
+
+<span style="color: blue;"> Compared to model in part (c), we can notice that the two models essentially produces the same results, with completely identical coefficients for attend_hat and attend_v in both models respectively. Further research actually suggests that these two models are essentially performing the same functions, and therefore produces highly similar results.  </span>
